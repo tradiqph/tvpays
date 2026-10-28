@@ -1,5 +1,23 @@
+import { WITHDRAWAL_TAX_RATE } from "@/lib/plans";
+
 /** Gross amount (before tax) — auto-send payout without HQ approval. */
 export const AUTO_PAYOUT_MAX_GROSS_PHP = 300;
+
+export function isSuperAdminRole(role: unknown): boolean {
+  return role === "super_admin";
+}
+
+export function computeWithdrawalTaxAndNet(
+  gross: number,
+  options?: { taxExempt?: boolean },
+): { tax: number; net: number } {
+  const taxExempt = options?.taxExempt ?? false;
+  const tax = taxExempt
+    ? 0
+    : Math.round(gross * WITHDRAWAL_TAX_RATE * 100) / 100;
+  const net = Math.round((gross - tax) * 100) / 100;
+  return { tax, net };
+}
 
 export const WITHDRAWAL_PAYOUT_MER_PREFIX = "TVPWD";
 

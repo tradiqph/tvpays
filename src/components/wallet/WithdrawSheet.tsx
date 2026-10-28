@@ -20,9 +20,17 @@ type Props = {
   onClose: () => void;
   maxAmount: number;
   onSuccess: () => void;
+  /** Super admins pay no withdrawal tax (net = gross). */
+  taxExempt?: boolean;
 };
 
-export function WithdrawSheet({ open, onClose, maxAmount, onSuccess }: Props) {
+export function WithdrawSheet({
+  open,
+  onClose,
+  maxAmount,
+  onSuccess,
+  taxExempt = false,
+}: Props) {
   const [amount, setAmount] = useState("200");
   const [destinationType, setDestinationType] = useState("gcash");
   const [destinationNumber, setDestinationNumber] = useState("");
@@ -104,7 +112,8 @@ export function WithdrawSheet({ open, onClose, maxAmount, onSuccess }: Props) {
           </button>
         </div>
         <p className="mb-2 text-xs text-slate-400">
-          Available: ₱{maxAmount.toFixed(2)} • 10% tax • min ₱200
+          Available: ₱{maxAmount.toFixed(2)} •{" "}
+          {taxExempt ? "no tax" : "10% tax"} • min ₱200
         </p>
         <input
           type="number"

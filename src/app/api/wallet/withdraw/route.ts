@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  MAX_WITHDRAWAL_PHP,
-  MIN_WITHDRAWAL_PHP,
-  WITHDRAWAL_TAX_RATE,
-} from "@/lib/plans";
+import { MAX_WITHDRAWAL_PHP, MIN_WITHDRAWAL_PHP } from "@/lib/plans";
 import { clampText } from "@/lib/security/input";
 import {
   hasActivePaidSubscription,
@@ -18,7 +14,11 @@ import {
   parseStarpagoMemberMethod,
   validateGcashPayerName,
 } from "@/lib/starpago";
-import { AUTO_PAYOUT_MAX_GROSS_PHP } from "@/lib/withdrawals";
+import {
+  AUTO_PAYOUT_MAX_GROSS_PHP,
+  computeWithdrawalTaxAndNet,
+  isSuperAdminRole,
+} from "@/lib/withdrawals";
 import {
   dispatchWithdrawalPayout,
   markWithdrawalFailedAndRefund,
@@ -94,8 +94,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const tax = Math.round(gross * WITHDRAWAL_TAX_RATE * 100) / 100;
-  const net = Math.round((gross - tax) * 100) / 100;
+  const taxExempt = isSuperAdminRole(user.app_metadata?.role);
+  const { tax, net } = computeWithdrawalTaxAndNet(gross, { taxExempt });
 
   const admin = createAdminClient();
   const { data: row, error } = await admin

@@ -216,6 +216,7 @@ export function WalletView() {
   const [transferDirection, setTransferDirection] =
     useState<WalletTransferDirection>("deposit_to_withdrawal");
   const [canWithdraw, setCanWithdraw] = useState(false);
+  const [withdrawTaxExempt, setWithdrawTaxExempt] = useState(false);
   const [withdrawBlockedOpen, setWithdrawBlockedOpen] = useState(false);
   const [lastWithdrawal, setLastWithdrawal] = useState<WithdrawalRow | null>(
     null,
@@ -232,6 +233,8 @@ export function WalletView() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
+
+    setWithdrawTaxExempt(user.app_metadata?.role === "super_admin");
 
     await fetch("/api/wallet/withdrawals/sync", { method: "POST" }).catch(
       () => {},
@@ -523,6 +526,7 @@ export function WalletView() {
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
         maxAmount={withdrawal}
+        taxExempt={withdrawTaxExempt}
         onSuccess={refreshAfterWithdraw}
       />
       <AlertDialog

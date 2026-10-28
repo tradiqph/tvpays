@@ -73,7 +73,7 @@ export async function emailWithdrawalAdminNotify(
         <li><strong>Withdrawal ID:</strong> ${input.withdrawalId}</li>
         <li><strong>Member email:</strong> ${member}</li>
         <li><strong>Gross:</strong> ₱${input.gross.toFixed(2)}</li>
-        <li><strong>Tax (10%):</strong> ₱${input.tax.toFixed(2)}</li>
+        <li><strong>Tax:</strong> ₱${input.tax.toFixed(2)}${input.tax === 0 ? " (exempt)" : " (10%)"}</li>
         <li><strong>Net payout:</strong> ₱${input.net.toFixed(2)}</li>
         <li><strong>Destination:</strong> ${destLabel} — ${input.destinationNumber} (${input.destinationName})</li>
         <li><strong>Auto payout:</strong> ${input.autoPayoutAttempted ? "attempted (≤ auto limit)" : "HQ review (above auto limit)"}</li>
