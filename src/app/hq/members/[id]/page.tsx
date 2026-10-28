@@ -4,6 +4,7 @@ import { ArrowDownToLine, Banknote, CalendarDays, Clock, Film, Mail, Users, Wall
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, EmptyState, PageHeader, Skeleton, StatCard, StatusBadge } from "@/components/hq/ui";
 import { MemberAdminActions } from "@/components/hq/actions";
+import { MemberSelfPanel } from "@/components/hq/MemberSelfPanel";
 import { getHqSession } from "@/lib/hq/auth";
 import { planBySlug } from "@/lib/plans";
 import { dateTime, humanize, php } from "@/lib/hq/format";
@@ -40,7 +41,8 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
   const suspended = Boolean(bannedUntil && bannedUntil.getTime() > t.now);
   const staffRole = authUser?.app_metadata?.role as string | undefined;
   const isStaff = staffRole === "hq" || staffRole === "super_admin";
-  const canManage = !isStaff || session?.isSuper;
+  const isSelf = session?.user.id === id;
+  const canManage = isSelf || !isStaff || session?.isSuper;
   const w = walletRes.data;
   let referrer: { id: string; member_code: string } | null = null;
   if (p.referred_by) {
@@ -81,10 +83,13 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
               canReset={Boolean(authUser?.email)}
               isSuper={session?.isSuper ?? false}
               hasUpline={Boolean(p.referred_by)}
+              isSelf={isSelf}
             />
           )}
         </div>
       </Card>
+
+      {isSelf && <MemberSelfPanel />}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard label="Withdrawable" value={php(w?.withdrawal_balance)} icon={Banknote} tone="emerald" />

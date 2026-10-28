@@ -221,12 +221,14 @@ export function MemberAdminActions({
   canReset,
   isSuper,
   hasUpline,
+  isSelf = false,
 }: {
   id: string;
   suspended: boolean;
   canReset: boolean;
   isSuper: boolean;
   hasUpline: boolean;
+  isSelf?: boolean;
 }) {
   const { run, loading, error, setError } = useHqAction();
   const [dialog, setDialog] = useState<MemberDialog | null>(null);
@@ -406,15 +408,16 @@ export function MemberAdminActions({
             )}
           </>
         )}
-        {suspended ? (
-          <Button variant="success" onClick={() => setDialog("reactivate")}>
-            <UserCheck className="h-3.5 w-3.5" /> Reactivate
-          </Button>
-        ) : (
-          <Button variant="danger" onClick={() => setDialog("suspend")}>
-            <UserX className="h-3.5 w-3.5" /> Suspend
-          </Button>
-        )}
+        {!isSelf &&
+          (suspended ? (
+            <Button variant="success" onClick={() => setDialog("reactivate")}>
+              <UserCheck className="h-3.5 w-3.5" /> Reactivate
+            </Button>
+          ) : (
+            <Button variant="danger" onClick={() => setDialog("suspend")}>
+              <UserX className="h-3.5 w-3.5" /> Suspend
+            </Button>
+          ))}
       </div>
       {done && <p className="mt-2 text-xs text-emerald-300">{done}</p>}
 

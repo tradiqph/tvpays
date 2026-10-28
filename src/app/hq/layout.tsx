@@ -33,6 +33,7 @@ async function Shell({ children }: { children: React.ReactNode }) {
     <HqShell
       email={session.user.email ?? "admin"}
       role={session.role}
+      userId={session.user.id}
       pendingWithdrawals={pending.withdrawals}
       pendingAgents={pending.agents}
     >

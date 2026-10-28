@@ -10,6 +10,7 @@ const RATE_LIMITED_POST: { path: string; max: number; windowMs: number }[] = [
   { path: "/api/auth/login", max: 20, windowMs: 60_000 },
   { path: "/api/auth/forgot-password", max: 10, windowMs: 60_000 },
   { path: "/api/wallet/withdraw", max: 15, windowMs: 60_000 },
+  { path: "/api/wallet/transfer", max: 30, windowMs: 60_000 },
   { path: "/api/hq/members", max: 30, windowMs: 60_000 },
   { path: "/api/starpago/deposits", max: 20, windowMs: 60_000 },
   { path: "/api/economy/drama-episode", max: 120, windowMs: 60_000 },

@@ -38,6 +38,10 @@ export async function assertHqCanManageMember(
     return { ok: false, error: "Member not found", status: 404 };
   }
 
+  if (targetUserId === session.user.id) {
+    return { ok: true };
+  }
+
   const targetRole = target.user.app_metadata?.role;
   if (
     (targetRole === "hq" || targetRole === "super_admin") &&

@@ -15,6 +15,7 @@ import {
   MonitorSmartphone,
   ScrollText,
   ShieldCheck,
+  UserCircle,
   Users,
   X,
   Activity,
@@ -35,6 +36,7 @@ type Props = {
   children: ReactNode;
   email: string;
   role: "hq" | "super_admin";
+  userId: string;
   pendingWithdrawals: number;
   pendingAgents: number;
 };
@@ -82,7 +84,14 @@ function isActive(pathname: string, href: string) {
   return href === "/hq" ? pathname === "/hq" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function HqShell({ children, email, role, pendingWithdrawals, pendingAgents }: Props) {
+export function HqShell({
+  children,
+  email,
+  role,
+  userId,
+  pendingWithdrawals,
+  pendingAgents,
+}: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -105,6 +114,11 @@ export function HqShell({ children, email, role, pendingWithdrawals, pendingAgen
       title: "People & money",
       items: [
         { href: "/hq/members", label: "Members", icon: Users },
+        {
+          href: `/hq/members/${userId}`,
+          label: "My account",
+          icon: UserCircle,
+        },
         { href: "/hq/transactions", label: "Transactions", icon: ArrowLeftRight },
       ],
     },
@@ -204,10 +218,17 @@ export function HqShell({ children, email, role, pendingWithdrawals, pendingAgen
             </nav>
             <Link
               href="/wallet"
-              className="mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-500 hover:text-slate-200"
+              className="mb-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-sky-300/90 hover:bg-white/[0.04] hover:text-sky-200"
             >
               <MonitorSmartphone className="h-4 w-4" />
-              Open member app
+              Member app (wallet & dramas)
+            </Link>
+            <Link
+              href={`/hq/members/${userId}`}
+              className="mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-500 hover:text-slate-200"
+            >
+              <UserCircle className="h-4 w-4" />
+              My HQ member record
             </Link>
             {userBlock}
           </div>
@@ -316,10 +337,18 @@ export function HqShell({ children, email, role, pendingWithdrawals, pendingAgen
                   <Link
                     href="/wallet"
                     onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400"
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-sky-300"
                   >
                     <MonitorSmartphone className="h-[18px] w-[18px]" />
-                    Open member app
+                    Member app (wallet & dramas)
+                  </Link>
+                  <Link
+                    href={`/hq/members/${userId}`}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400"
+                  >
+                    <UserCircle className="h-[18px] w-[18px]" />
+                    My HQ member record
                   </Link>
                 </div>
                 <div className="mt-3">{userBlock}</div>
