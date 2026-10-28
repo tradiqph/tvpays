@@ -16,6 +16,9 @@ type Props = {
   autoComplete?: string;
   delay?: number;
   icon?: LucideIcon;
+  readOnly?: boolean;
+  disabled?: boolean;
+  hint?: string;
 };
 
 export function AuthField({
@@ -30,6 +33,9 @@ export function AuthField({
   autoComplete,
   delay = 0,
   icon: Icon,
+  readOnly,
+  disabled,
+  hint,
 }: Props) {
   const [focused, setFocused] = useState(false);
   const [reveal, setReveal] = useState(false);
@@ -72,10 +78,12 @@ export function AuthField({
           autoComplete={autoComplete}
           placeholder={placeholder}
           value={value}
+          readOnly={readOnly}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="w-full bg-transparent px-3.5 py-3 text-white outline-none placeholder:text-slate-500"
+          className="w-full bg-transparent px-3.5 py-3 text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-70"
         />
         {isPassword && (
           <button
@@ -99,6 +107,9 @@ export function AuthField({
           </button>
         )}
       </motion.div>
+      {hint ? (
+        <span className="mt-1.5 block text-[11px] text-slate-500">{hint}</span>
+      ) : null}
     </motion.label>
   );
 }

@@ -139,6 +139,23 @@ function LoginForm() {
   );
 }
 
+function SignupLinkFromInvite() {
+  const search = useSearchParams();
+  const ref = search.get("ref") ?? search.get("referral") ?? "";
+  const href = ref.trim()
+    ? `/signup?ref=${encodeURIComponent(ref.trim())}`
+    : "/signup";
+
+  return (
+    <Link
+      href={href}
+      className="font-semibold text-amber-200 underline-offset-4 transition hover:text-amber-100 hover:underline"
+    >
+      Sign up
+    </Link>
+  );
+}
+
 export default function LoginPage() {
   return (
     <AuthShell
@@ -147,12 +164,9 @@ export default function LoginPage() {
       footer={
         <p className="text-center text-sm text-slate-300/80">
           No account?{" "}
-          <Link
-            href="/signup"
-            className="font-semibold text-amber-200 underline-offset-4 transition hover:text-amber-100 hover:underline"
-          >
-            Sign up
-          </Link>
+          <Suspense fallback={<span className="font-semibold text-amber-200">Sign up</span>}>
+            <SignupLinkFromInvite />
+          </Suspense>
         </p>
       }
     >

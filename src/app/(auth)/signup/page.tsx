@@ -8,6 +8,12 @@ import { createClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import {
+  SIGNUP_REF_LOCK_STORAGE_KEY,
+  normalizeReferralCodeInput,
+  referralCodeFromSearchParams,
+  signupReferralErrorMessage,
+} from "@/lib/referral-signup";
 
 function SignupForm() {
   const router = useRouter();
@@ -16,22 +22,56 @@ function SignupForm() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [referralLocked, setReferralLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fromUrl =
-      searchParams.get("ref") ?? searchParams.get("referral") ?? "";
-    const trimmed = fromUrl.trim();
-    if (trimmed) {
-      setReferralCode(trimmed.toUpperCase());
+    const fromUrl = referralCodeFromSearchParams(searchParams);
+    if (fromUrl) {
+      setReferralCode(fromUrl);
+      setReferralLocked(true);
+      try {
+        sessionStorage.setItem(SIGNUP_REF_LOCK_STORAGE_KEY, fromUrl);
+      } catch {
+        /* private mode */
+      }
+      return;
+    }
+    try {
+      const stored = sessionStorage.getItem(SIGNUP_REF_LOCK_STORAGE_KEY);
+      if (stored) {
+        setReferralCode(normalizeReferralCodeInput(stored));
+        setReferralLocked(true);
+      }
+    } catch {
+      /* ignore */
     }
   }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const code = normalizeReferralCodeInput(referralCode);
+    if (!code) {
+      setError("Enter your inviter's referral code to sign up.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
+    const check = await fetch("/api/auth/validate-referral", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (!check.ok) {
+      const body = (await check.json().catch(() => ({}))) as { error?: string };
+      setLoading(false);
+      setError(body.error ?? "Invalid referral code.");
+      return;
+    }
+
     const supabase = createClient();
     const { error: err } = await supabase.auth.signUp({
       email,
@@ -39,14 +79,19 @@ function SignupForm() {
       options: {
         data: {
           display_name: displayName.trim() || undefined,
-          referral_code: referralCode.trim() || undefined,
+          referral_code: code,
         },
       },
     });
     setLoading(false);
     if (err) {
-      setError(err.message);
+      setError(signupReferralErrorMessage(err.message));
       return;
+    }
+    try {
+      sessionStorage.removeItem(SIGNUP_REF_LOCK_STORAGE_KEY);
+    } catch {
+      /* ignore */
     }
     router.push("/wallet");
     router.refresh();
@@ -55,7 +100,7 @@ function SignupForm() {
   return (
     <AuthShell
       title="Create account"
-      subtitle="15-day free trial · projections are not guaranteed earnings"
+      subtitle="15-day free trial · invite-only · projections are not guaranteed earnings"
       footer={
         <p className="text-center text-sm text-slate-400">
           Already have an account?{" "}
@@ -69,6 +114,23 @@ function SignupForm() {
       }
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <AuthField
+          id="referral"
+          label="Referral code"
+          placeholder="Required — from your inviter"
+          value={referralCode}
+          onChange={(v) => {
+            if (!referralLocked) setReferralCode(v.toUpperCase());
+          }}
+          required
+          readOnly={referralLocked}
+          hint={
+            referralLocked
+              ? "Locked from your invite link. You cannot change this code."
+              : "You need a valid referral code from an existing member."
+          }
+          delay={0.14}
+        />
         <AuthField
           id="displayName"
           label="Display name"
@@ -100,14 +162,6 @@ function SignupForm() {
           minLength={6}
           autoComplete="new-password"
           delay={0.26}
-        />
-        <AuthField
-          id="referral"
-          label="Referral code"
-          placeholder="Optional"
-          value={referralCode}
-          onChange={setReferralCode}
-          delay={0.3}
         />
         {error && (
           <motion.p
