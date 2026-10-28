@@ -210,13 +210,42 @@ export async function assertCanStreamEpisode(
   );
 }
 
+/** Providers sometimes send milliseconds or inflated chapter duration. */
+export function normalizeEpisodeDuration(
+  raw: number | null | undefined,
+): number | null {
+  if (raw == null || !Number.isFinite(raw) || raw <= 0) return null;
+  let d = raw;
+  if (d > 600) d = d / 1000;
+  return d > 0 && d < 7200 ? d : null;
+}
+
 export function watchSecondsQualify(
   watchSeconds: number,
   durationSeconds?: number | null,
+  actualFileSeconds?: number | null,
+  peakSeconds?: number | null,
 ): boolean {
   if (watchSeconds < MIN_WATCH_SECONDS) return false;
-  if (durationSeconds != null && durationSeconds > 0) {
-    return watchSeconds >= durationSeconds * MIN_WATCH_RATIO;
+  const meta = normalizeEpisodeDuration(durationSeconds);
+  const file = normalizeEpisodeDuration(actualFileSeconds);
+  const duration = file ?? meta;
+  if (duration != null && duration > 0) {
+    const need = Math.max(MIN_WATCH_SECONDS, duration * MIN_WATCH_RATIO);
+    if (peakSeconds != null && Number.isFinite(peakSeconds)) {
+      const peak = Math.max(0, peakSeconds);
+      // Reached near the end without enough engaged watch time → skipped ahead.
+      if (peak >= duration * MIN_WATCH_RATIO && watchSeconds < need) {
+        return false;
+      }
+      const skipGap = peak - watchSeconds;
+      if (skipGap > Math.min(45, duration * 0.2) && watchSeconds < need) {
+        return false;
+      }
+    }
+    if (watchSeconds >= need) return true;
+    if (file != null && watchSeconds >= file * MIN_WATCH_RATIO - 2) return true;
+    return false;
   }
   return true;
 }

@@ -13,14 +13,14 @@ export const DRAMA_RENEWAL_OPTIONS: DramaRenewalOption[] = [
     period: "week",
     label: "Weekly",
     days: 7,
-    pricePhp: 149,
+    pricePhp: 280,
     friendlyLength: "1 week",
   },
   {
     period: "month",
     label: "Monthly",
     days: 30,
-    pricePhp: 499,
+    pricePhp: 1199,
     friendlyLength: "1 month",
   },
   {

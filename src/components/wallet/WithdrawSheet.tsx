@@ -1,8 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SlideSheet } from "@/components/member/SlideSheet";
 import { AlertDialog } from "@/components/member/AlertDialog";
+import {
+  clearSavedWithdrawDestination,
+  getSavedWithdrawDestination,
+  saveWithdrawDestination,
+} from "@/lib/withdraw-destination";
+import {
+  filterPayerNameLetters,
+  filterPhMobileDigits,
+  normalizePhMobile,
+  validateGcashPayerName,
+} from "@/lib/starpago";
 
 type Props = {
   open: boolean;
@@ -19,19 +30,43 @@ export function WithdrawSheet({ open, onClose, maxAmount, onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [saveDetails, setSaveDetails] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const saved = getSavedWithdrawDestination();
+    if (saved) {
+      setDestinationType(saved.destinationType);
+      setDestinationNumber(filterPhMobileDigits(saved.destinationNumber));
+      setDestinationName(filterPayerNameLetters(saved.destinationName));
+      setSaveDetails(true);
+    }
+  }, [open]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    const mobile = normalizePhMobile(destinationNumber);
+    if (!mobile) {
+      setError("Enter a valid mobile number: 11 digits starting with 09");
+      return;
+    }
+    const nameErr = validateGcashPayerName(destinationName);
+    if (nameErr) {
+      setError(nameErr);
+      return;
+    }
+
+    setLoading(true);
     const res = await fetch("/api/wallet/withdraw", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amount: Number(amount),
         destination_type: destinationType,
-        destination_number: destinationNumber,
-        destination_name: destinationName,
+        destination_number: mobile,
+        destination_name: destinationName.trim(),
       }),
     });
     const json = (await res.json()) as { error?: string };
@@ -39,6 +74,16 @@ export function WithdrawSheet({ open, onClose, maxAmount, onSuccess }: Props) {
     if (!res.ok) {
       setError(json.error ?? "Withdrawal failed");
       return;
+    }
+    const destType = destinationType === "maya" ? "maya" : "gcash";
+    if (saveDetails) {
+      saveWithdrawDestination({
+        destinationType: destType,
+        destinationNumber: mobile,
+        destinationName: destinationName.trim(),
+      });
+    } else {
+      clearSavedWithdrawDestination();
     }
     onSuccess();
     onClose();
@@ -77,22 +122,42 @@ export function WithdrawSheet({ open, onClose, maxAmount, onSuccess }: Props) {
         >
           <option value="gcash">GCash</option>
           <option value="maya">Maya</option>
-          <option value="bank">Bank (InstaPay)</option>
         </select>
         <input
           required
-          placeholder="Account / mobile number"
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          maxLength={11}
+          pattern="09[0-9]{9}"
+          title="11-digit mobile number starting with 09"
+          placeholder="GCash / Maya mobile (09XXXXXXXXX)"
           value={destinationNumber}
-          onChange={(e) => setDestinationNumber(e.target.value)}
+          onChange={(e) => setDestinationNumber(filterPhMobileDigits(e.target.value))}
           className="mb-2 w-full rounded-xl border border-sky-800 bg-slate-950 px-3 py-2 text-white"
         />
         <input
           required
-          placeholder="Account name"
+          autoComplete="name"
+          placeholder="Account name (letters only)"
           value={destinationName}
-          onChange={(e) => setDestinationName(e.target.value)}
+          onChange={(e) => setDestinationName(filterPayerNameLetters(e.target.value))}
           className="mb-3 w-full rounded-xl border border-sky-800 bg-slate-950 px-3 py-2 text-white"
         />
+        <label className="mb-4 flex cursor-pointer items-start gap-3 text-left">
+          <input
+            type="checkbox"
+            checked={saveDetails}
+            onChange={(e) => setSaveDetails(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 rounded border-sky-700 bg-slate-950 accent-emerald-500"
+          />
+          <span className="text-sm text-slate-300">
+            Save payment details for next time
+            <span className="mt-0.5 block text-xs text-slate-500">
+              Stored on this device only.
+            </span>
+          </span>
+        </label>
         <button
           type="submit"
           disabled={loading}

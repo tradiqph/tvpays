@@ -3,13 +3,16 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Lock, Mail } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
+
+const turnstileSiteKey =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
 
 function LoginForm() {
   const router = useRouter();
@@ -17,21 +20,42 @@ function LoginForm() {
   const next = search.get("next") || "/wallet";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const resetTurnstileRef = useRef<(() => void) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const turnstileRequired = Boolean(turnstileSiteKey);
+
+  const onTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const onTurnstileReady = useCallback((reset: () => void) => {
+    resetTurnstileRef.current = reset;
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (turnstileRequired && !turnstileToken) {
+      setError("Complete the security check before signing in.");
+      return;
+    }
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        turnstileToken: turnstileToken ?? undefined,
+      }),
     });
+    const json = (await res.json()) as { error?: string };
     setLoading(false);
-    if (err) {
-      setError(err.message);
+    if (!res.ok) {
+      setError(json.error ?? "Could not sign in");
+      resetTurnstileRef.current?.();
       return;
     }
     router.push(next);
@@ -79,6 +103,20 @@ function LoginForm() {
           </Link>
         </motion.p>
       </div>
+      {turnstileRequired && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.48 }}
+          className="flex justify-center"
+        >
+          <TurnstileWidget
+            siteKey={turnstileSiteKey}
+            onToken={onTurnstileToken}
+            onReady={onTurnstileReady}
+          />
+        </motion.div>
+      )}
       {error && (
         <motion.p
           key={error}
@@ -91,7 +129,12 @@ function LoginForm() {
           {error}
         </motion.p>
       )}
-      <AuthSubmitButton loading={loading}>Sign in</AuthSubmitButton>
+      <AuthSubmitButton
+        loading={loading}
+        disabled={turnstileRequired && !turnstileToken}
+      >
+        Sign in
+      </AuthSubmitButton>
     </form>
   );
 }
@@ -100,14 +143,13 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Watch • Click • Earn"
       hero
       footer={
-        <p className="text-center text-sm text-slate-400">
+        <p className="text-center text-sm text-slate-300/80">
           No account?{" "}
           <Link
             href="/signup"
-            className="font-medium text-sky-300 underline-offset-2 hover:underline"
+            className="font-semibold text-amber-200 underline-offset-4 transition hover:text-amber-100 hover:underline"
           >
             Sign up
           </Link>

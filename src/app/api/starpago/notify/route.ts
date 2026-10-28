@@ -9,6 +9,12 @@ import {
 } from "@/lib/starpago";
 import { creditStarpagoDeposit } from "@/lib/starpago-deposit";
 import { emailDepositPaid } from "@/lib/email";
+import { applyStarpagoPayoutToWithdrawal } from "@/lib/hq-withdrawals";
+import {
+  mapStarpagoPayoutStatus,
+  queryStarpagoPayout,
+} from "@/lib/starpago-payout";
+import { isWithdrawalPayoutMerOrderNo } from "@/lib/withdrawals";
 
 export async function POST(request: Request) {
   const ip = clientIpFromRequest(request);
@@ -30,13 +36,31 @@ export async function POST(request: Request) {
   }
 
   const status = Number(body.orderStatus ?? body.status ?? 0);
-  if (!isStarpagoPaidStatus(status)) {
-    return NextResponse.json({ ok: true, ignored: true });
-  }
-
   const merOrderNo = String(body.merOrderNo ?? "");
   if (!merOrderNo) {
     return NextResponse.json({ error: "Missing merOrderNo" }, { status: 400 });
+  }
+
+  if (isWithdrawalPayoutMerOrderNo(merOrderNo)) {
+    let orderStatus = status;
+    let message =
+      typeof body.message === "string" ? body.message : undefined;
+    const action = mapStarpagoPayoutStatus(orderStatus);
+    if (action !== "in_progress") {
+      try {
+        const queried = await queryStarpagoPayout(merOrderNo);
+        orderStatus = queried.orderStatus;
+        message = queried.message ?? message;
+      } catch (e) {
+        console.warn("[starpago/notify] payout query failed", merOrderNo, e);
+      }
+    }
+    await applyStarpagoPayoutToWithdrawal(merOrderNo, orderStatus, message);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (!isStarpagoPaidStatus(status)) {
+    return NextResponse.json({ ok: true, ignored: true });
   }
 
   const admin = createAdminClient();

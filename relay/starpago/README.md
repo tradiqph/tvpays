@@ -21,4 +21,4 @@ Typical: `location /` → `proxy_pass http://127.0.0.1:8787;`
 | `STARPAGO_RELAY_URL` | Your relay host (e.g. `https://starpago-relay.tvpays.net`) |
 | `STARPAGO_RELAY_SECRET` | Bearer token matching `RELAY_SECRET` |
 
-Allowed paths: pay-in create/query and merchant balance only (payouts use PayMongo).
+Allowed paths: pay-in create/query, payout create/query, and merchant balance.

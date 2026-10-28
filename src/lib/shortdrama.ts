@@ -21,10 +21,15 @@ export type DramaEpisode = {
   subtitles: { language: string; label: string; url: string }[];
 };
 
+/** A provider's own home-feed grouping (e.g. NetShort "Drama Viral"). */
+export type DramaSection = { id: string; name: string };
+
 export type DramaPage = {
   items: DramaSummary[];
   nextCursor: string | null;
   hasMore: boolean;
+  /** Only filled when the provider's home feed has more than one section. */
+  sections: DramaSection[];
 };
 
 export type DramaEpisodes = {
@@ -54,6 +59,13 @@ const KNOWN_LABELS: Record<string, string> = {
 const UPSTREAM_IDS: Record<string, string> = {
   dramabox: "dramabox_web",
 };
+
+// Providers whose /api/search fails or ignores the keyword (checked Oct 2026).
+const SEARCH_UNSUPPORTED = new Set(["reelshort", "chillshorts"]);
+
+export function platformSupportsSearch(p: DramaPlatform) {
+  return !SEARCH_UNSUPPORTED.has(p);
+}
 
 export function platformLabel(p: DramaPlatform) {
   return KNOWN_LABELS[p] ?? p.charAt(0).toUpperCase() + p.slice(1);
@@ -132,7 +144,9 @@ type RawStory = {
 
 type RawResponse = {
   status?: string;
-  data?: { categories?: { stories?: RawStory[] }[] };
+  data?: {
+    categories?: { category_id?: string | number; category_name?: string; stories?: RawStory[] }[];
+  };
   pagination?: { pageNo?: number; hasMore?: boolean };
   error?: string;
 };
@@ -195,14 +209,24 @@ function toSummary(s: RawStory): DramaSummary {
   };
 }
 
-function toPage(r: RawResponse): DramaPage {
+function toPage(r: RawResponse, section?: string): DramaPage {
+  const cats = r.data?.categories ?? [];
+  const sections =
+    cats.length > 1
+      ? cats
+          .filter((c) => c.category_id != null && c.category_name)
+          .map((c) => ({ id: String(c.category_id), name: c.category_name!.trim() }))
+      : [];
+  const picked = section ? cats.filter((c) => String(c.category_id) === section) : cats;
   const seen = new Set<string>();
-  const items = stories(r)
+  const items = picked
+    .flatMap((c) => c.stories ?? [])
     .map(toSummary)
     .filter((i) => i.id && !seen.has(i.id) && seen.add(i.id));
   const pageNo = r.pagination?.pageNo ?? 1;
-  const hasMore = Boolean(r.pagination?.hasMore);
-  return { items, hasMore, nextCursor: hasMore ? String(pageNo + 1) : null };
+  // Section views come from page 1 only; later pages don't keep the same grouping.
+  const hasMore = !section && Boolean(r.pagination?.hasMore);
+  return { items, hasMore, nextCursor: hasMore ? String(pageNo + 1) : null, sections };
 }
 
 // Catalog lists change slowly; cache briefly to save quota.
@@ -212,9 +236,17 @@ export async function dramaHome(
   provider: DramaPlatform,
   cursor?: string,
   pageSize = "21",
+  section?: string,
 ) {
+  // Same upstream request with or without a section, so the cache is shared.
   return toPage(
-    await call(provider, "/api/home", { pageNo: cursor ?? "1", pageSize }, CATALOG_CACHE),
+    await call(
+      provider,
+      "/api/home",
+      { pageNo: section ? "1" : (cursor ?? "1"), pageSize },
+      CATALOG_CACHE,
+    ),
+    section,
   );
 }
 
@@ -223,9 +255,10 @@ export async function dramaSearch(
   q: string,
   pageSize = "21",
 ) {
-  return toPage(
+  const page = toPage(
     await call(provider, "/api/search", { keyword: q, pageNo: "1", pageSize }, CATALOG_CACHE),
   );
+  return { ...page, sections: [] };
 }
 
 export async function dramaEpisodes(
@@ -250,7 +283,13 @@ export async function dramaEpisodes(
     cover: story.cover || null,
     episodes: eps.map((e, i) => {
       const n = e.episode_number ?? i + 1;
-      const dur = Number(e.duration);
+      const rawDur = Number(e.duration);
+      const dur =
+        Number.isFinite(rawDur) && rawDur > 0
+          ? rawDur > 600
+            ? rawDur / 1000
+            : rawDur
+          : null;
       return {
         id: String(e.episode_id ?? n),
         number: n,
@@ -258,7 +297,7 @@ export async function dramaEpisodes(
         image: e.thumbnail || null,
         // Some providers omit the link here; fetch it via dramaStream().
         videoUrl: normalizePlaybackUrl(e.video_url),
-        duration: Number.isFinite(dur) ? dur : null,
+        duration: dur,
         isLocked: Boolean(e.is_locked),
         subtitles: [],
       };

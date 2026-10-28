@@ -6,12 +6,35 @@ import { useCallback, useSyncExternalStore } from "react";
 export type Preferences = {
   /** Jump to the next unlocked episode when one finishes. */
   autoplayNext: boolean;
+  /** Start episodes with sound off. */
+  startMuted: boolean;
+  /** Cap HLS streams at ~480p to save mobile data. */
+  dataSaver: boolean;
+  /** Drama source to open first on Media (null = app default). */
+  defaultSource: string | null;
+  /** Play the coin sound when an episode earns a reward. */
+  soundEffects: boolean;
   /** Turn off decorative animations regardless of the OS setting. */
   reduceMotion: boolean;
+  /** In-app notification categories shown under the bell. */
+  notifyReminders: boolean;
+  notifyAccess: boolean;
+  notifyWallet: boolean;
 };
 
 const KEY = "tvpays:prefs";
-const DEFAULTS: Preferences = { autoplayNext: true, reduceMotion: false };
+export const DEFAULT_PREFERENCES: Preferences = {
+  autoplayNext: true,
+  startMuted: false,
+  dataSaver: false,
+  defaultSource: null,
+  soundEffects: true,
+  reduceMotion: false,
+  notifyReminders: true,
+  notifyAccess: true,
+  notifyWallet: true,
+};
+const DEFAULTS = DEFAULT_PREFERENCES;
 const listeners = new Set<() => void>();
 
 let cachedRaw: string | null | undefined;
@@ -59,5 +82,36 @@ export function usePreferences() {
     }
     listeners.forEach((l) => l());
   }, []);
-  return [prefs, set] as const;
+  const reset = useCallback(() => {
+    try {
+      window.localStorage.removeItem(KEY);
+    } catch {
+      return;
+    }
+    listeners.forEach((l) => l());
+  }, []);
+  return [prefs, set, reset] as const;
+}
+
+export type NotificationCategory = "reminders" | "access" | "wallet";
+
+/** Maps a notification id (see member-notifications.ts) to its settings category. */
+export function notificationCategory(id: string): NotificationCategory | null {
+  if (/^(checkin|episodes)-/.test(id)) return "reminders";
+  if (/^(drama-access|subscription|trial)-/.test(id)) return "access";
+  if (/^(withdrawal|refund)-/.test(id)) return "wallet";
+  return null;
+}
+
+export function notificationAllowed(id: string, prefs: Preferences): boolean {
+  switch (notificationCategory(id)) {
+    case "reminders":
+      return prefs.notifyReminders;
+    case "access":
+      return prefs.notifyAccess;
+    case "wallet":
+      return prefs.notifyWallet;
+    default:
+      return true;
+  }
 }

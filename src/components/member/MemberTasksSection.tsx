@@ -151,10 +151,15 @@ export function MemberTasksSection({ data, onCheckin, checkinLoading }: Props) {
         <p className="mt-1 text-[11px] text-sky-100/70">
           {activeCount} active package{activeCount === 1 ? "" : "s"}
           {" · "}
-          {data.episodeTotals.dailySlotsAllActivated} total daily episode slots
-          across {data.packages.length} activated plan
-          {data.packages.length === 1 ? "" : "s"} (up to{" "}
-          {formatPhp(data.episodeTotals.dailyPotentialAllActivated)}/day display*)
+          One episode counts toward every activated tier (finish{" "}
+          {data.episodeTotals.todayTargetActive} today — up to{" "}
+          {formatPhp(data.episodeTotals.dailyPotentialAllActivated)}/day display*
+          across {data.packages.filter((p) => p.slug !== "trial").length} paid
+          plan
+          {data.packages.filter((p) => p.slug !== "trial").length === 1
+            ? ""
+            : "s"}
+          )
         </p>
         <Link
           href="/media"

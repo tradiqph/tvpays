@@ -6,9 +6,11 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { AvatarPicker } from "@/components/member/AvatarPicker";
+import { AddDaysSheet } from "@/components/member/AddDaysSheet";
 import { GlossIcon, GlossPanel, TONES, type Tone } from "@/components/member/ProfileGloss";
 import { createClient } from "@/lib/supabase/client";
 import { planBySlug } from "@/lib/plans";
+import { useDramaSavedList } from "@/lib/drama-saved-list";
 import { daysRemainingUntil, formatDateManila } from "@/lib/format";
 import {
   ChevronRight,
@@ -27,6 +29,8 @@ import {
   Check,
   Pencil,
   Film,
+  Bookmark,
+  Plus,
 } from "lucide-react";
 
 type Profile = {
@@ -42,6 +46,7 @@ type Profile = {
   drama_access_ends_at: string | null;
   subscription_ends_at: string | null;
   trial_ends_at: string | null;
+  first_paid_plan_at: string | null;
 };
 
 const rowVariants = {
@@ -51,10 +56,12 @@ const rowVariants = {
 
 export function ProfileView() {
   const router = useRouter();
+  const { list: savedDramas } = useDramaSavedList();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [referrals, setReferrals] = useState(0);
   const [tasksDone, setTasksDone] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [addDaysOpen, setAddDaysOpen] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -66,7 +73,7 @@ export function ProfileView() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "member_code, display_name, avatar_url, plan_slug, ads_points, agent_status, referral_code, xp, level, drama_access_ends_at, subscription_ends_at, trial_ends_at",
+        "member_code, display_name, avatar_url, plan_slug, ads_points, agent_status, referral_code, xp, level, drama_access_ends_at, subscription_ends_at, trial_ends_at, first_paid_plan_at",
       )
       .eq("id", user.id)
       .single();
@@ -111,6 +118,8 @@ export function ProfileView() {
   const trialStreamingActive =
     profile?.plan_slug === "trial" && trialDaysLeft > 0 && !videoAccessActive;
   const membershipDaysLeft = daysRemainingUntil(profile?.subscription_ends_at);
+  // Extra days can be bought once any paid plan has been purchased.
+  const canAddDays = Boolean(profile?.first_paid_plan_at);
 
   async function copyCode() {
     if (!profile?.member_code) return;
@@ -136,6 +145,16 @@ export function ProfileView() {
       title: "My Referrals",
       sub: "View your team and referral earnings",
       href: "/profile/referrals",
+    },
+    {
+      icon: Bookmark,
+      tone: "blue",
+      title: "My list",
+      sub:
+        savedDramas.length === 0
+          ? "Save dramas to watch later"
+          : `${savedDramas.length} saved ${savedDramas.length === 1 ? "show" : "shows"}`,
+      href: "/profile/list",
     },
     { icon: Shield, tone: "blue", title: "Security", sub: "Change password and security settings", href: "/profile/security" },
     { icon: Headphones, tone: "slate", title: "Help & Support", sub: "FAQs and contact support", href: "/profile/help" },
@@ -295,12 +314,22 @@ export function ProfileView() {
                     <p className="text-sm font-bold text-slate-300">
                       No active video access
                     </p>
-                    <Link
-                      href="/renew"
-                      className="text-[11px] font-medium text-sky-300 underline-offset-2 hover:underline"
-                    >
-                      Renew or upgrade a plan to add days
-                    </Link>
+                    {canAddDays ? (
+                      <button
+                        type="button"
+                        onClick={() => setAddDaysOpen(true)}
+                        className="text-[11px] font-medium text-sky-300 underline-offset-2 hover:underline"
+                      >
+                        Tap + to add days
+                      </button>
+                    ) : (
+                      <Link
+                        href="/subscriptions"
+                        className="text-[11px] font-medium text-sky-300 underline-offset-2 hover:underline"
+                      >
+                        Purchase a plan to unlock video access
+                      </Link>
+                    )}
                   </>
                 )}
                 {membershipDaysLeft > 0 &&
@@ -313,6 +342,30 @@ export function ProfileView() {
                     </p>
                   )}
               </div>
+              {canAddDays && (
+                <motion.button
+                  type="button"
+                  onClick={() => setAddDaysOpen(true)}
+                  aria-label="Add video access days"
+                  whileTap={{ scale: 0.9 }}
+                  animate={
+                    videoAccessActive
+                      ? undefined
+                      : {
+                          boxShadow: [
+                            "0 0 8px rgba(34,211,238,0.4), inset 0 2px 3px rgba(255,255,255,0.55)",
+                            "0 0 20px rgba(34,211,238,0.9), inset 0 2px 3px rgba(255,255,255,0.55)",
+                            "0 0 8px rgba(34,211,238,0.4), inset 0 2px 3px rgba(255,255,255,0.55)",
+                          ],
+                        }
+                  }
+                  transition={{ duration: 1.6, repeat: Infinity }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-white/70 bg-gradient-to-b from-cyan-300 to-blue-600"
+                  style={{ boxShadow: "0 0 12px rgba(34,211,238,0.6), inset 0 2px 3px rgba(255,255,255,0.55)" }}
+                >
+                  <Plus className="h-5 w-5 text-white" strokeWidth={3} />
+                </motion.button>
+              )}
             </div>
           </div>
         </div>
@@ -433,6 +486,11 @@ export function ProfileView() {
           Referral code: {profile?.referral_code}
         </p>
       </div>
+      <AddDaysSheet
+        open={addDaysOpen}
+        onClose={() => setAddDaysOpen(false)}
+        onPurchased={() => void load()}
+      />
     </div>
   );
 }

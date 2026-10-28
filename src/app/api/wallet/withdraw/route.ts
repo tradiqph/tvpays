@@ -1,15 +1,28 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MIN_WITHDRAWAL_PHP, WITHDRAWAL_TAX_RATE } from "@/lib/plans";
+import {
+  MAX_WITHDRAWAL_PHP,
+  MIN_WITHDRAWAL_PHP,
+  WITHDRAWAL_TAX_RATE,
+} from "@/lib/plans";
+import { clampText } from "@/lib/security/input";
+import {
+  hasActivePaidSubscription,
+  WITHDRAWAL_REQUIRES_ACTIVE_PLAN_MESSAGE,
+} from "@/lib/membership";
 import { walletApply, getWallet } from "@/lib/wallet";
-import { emailWithdrawalRequested } from "@/lib/email";
-
-const BIC: Record<string, string> = {
-  gcash: "GXCHPHM2XXX",
-  maya: "MYYAPHM2XXX",
-  bank: "PAEYPHM2XXX",
-};
+import { emailWithdrawalAdminNotify } from "@/lib/email";
+import {
+  normalizePhMobile,
+  parseStarpagoMemberMethod,
+  validateGcashPayerName,
+} from "@/lib/starpago";
+import { AUTO_PAYOUT_MAX_GROSS_PHP } from "@/lib/withdrawals";
+import {
+  dispatchWithdrawalPayout,
+  markWithdrawalFailedAndRefund,
+} from "@/lib/hq-withdrawals";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -20,12 +33,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!(await hasActivePaidSubscription(user.id))) {
+    return NextResponse.json(
+      { error: WITHDRAWAL_REQUIRES_ACTIVE_PLAN_MESSAGE },
+      { status: 403 },
+    );
+  }
+
   const body = (await request.json()) as {
     amount?: number;
     destination_type?: string;
     destination_number?: string;
     destination_name?: string;
-    destination_bic?: string;
   };
 
   const gross = Number(body.amount);
@@ -35,13 +54,34 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  if (gross > MAX_WITHDRAWAL_PHP) {
+    return NextResponse.json(
+      {
+        error: `Maximum withdrawal per request is ₱${MAX_WITHDRAWAL_PHP.toLocaleString("en-PH")}`,
+      },
+      { status: 400 },
+    );
+  }
 
   const destType = String(body.destination_type ?? "gcash").toLowerCase();
-  const destNumber = String(body.destination_number ?? "").trim();
-  const destName = String(body.destination_name ?? "").trim();
-  if (!destNumber || !destName) {
+  if (!parseStarpagoMemberMethod(destType)) {
     return NextResponse.json(
-      { error: "Destination account required" },
+      { error: "Withdrawals are available to GCash and Maya only" },
+      { status: 400 },
+    );
+  }
+
+  const destNumberRaw = String(body.destination_number ?? "").trim();
+  const destName = clampText(body.destination_name, 80);
+  const nameErr = validateGcashPayerName(destName);
+  if (nameErr) {
+    return NextResponse.json({ error: nameErr }, { status: 400 });
+  }
+
+  const destNumber = normalizePhMobile(destNumberRaw);
+  if (!destNumber) {
+    return NextResponse.json(
+      { error: "Enter a valid Philippine mobile number (09XXXXXXXXX)" },
       { status: 400 },
     );
   }
@@ -69,7 +109,8 @@ export async function POST(request: Request) {
       destination_type: destType,
       destination_number: destNumber,
       destination_name: destName,
-      destination_bic: body.destination_bic?.trim() || BIC[destType] || BIC.bank,
+      destination_bic: null,
+      refund_status: "none",
     })
     .select("id")
     .single();
@@ -91,8 +132,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not reserve balance" }, { status: 500 });
   }
 
-  if (user.email) {
-    await emailWithdrawalRequested(user.email, net);
+  const autoPayout = gross <= AUTO_PAYOUT_MAX_GROSS_PHP;
+  await emailWithdrawalAdminNotify({
+    withdrawalId: row.id,
+    memberEmail: user.email ?? null,
+    gross,
+    tax,
+    net,
+    destinationType: destType,
+    destinationNumber: destNumber,
+    destinationName: destName,
+    autoPayoutAttempted: autoPayout,
+  });
+
+  if (autoPayout) {
+    try {
+      await dispatchWithdrawalPayout(row.id);
+    } catch (e) {
+      console.error("[withdraw] auto payout failed", row.id, e);
+      try {
+        await markWithdrawalFailedAndRefund(
+          row.id,
+          e instanceof Error ? e.message : "Payout could not be started",
+        );
+      } catch (refundErr) {
+        console.error("[withdraw] refund after auto payout fail", refundErr);
+      }
+    }
   }
 
   return NextResponse.json({ id: row.id, net_amount: net });

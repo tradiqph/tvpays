@@ -27,6 +27,18 @@ export function TaskView() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load]);
+
   async function doCheckin() {
     setCheckinLoading(true);
     const res = await fetch("/api/economy/checkin", { method: "POST" });

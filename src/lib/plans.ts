@@ -177,6 +177,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 
 export const MIN_TOPUP_PHP = 500;
 export const MIN_WITHDRAWAL_PHP = 200;
+/** Single request cap (balance check still applies). */
+export const MAX_WITHDRAWAL_PHP = 100_000;
+export const MAX_TOPUP_PHP = 100_000;
 export const WITHDRAWAL_TAX_RATE = 0.1;
 export const DAILY_CHECKIN_PHP = 5;
 export const REFERRAL_RATES = { a: 0.05, b: 0.03, c: 0.01 } as const;

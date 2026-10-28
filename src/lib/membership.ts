@@ -42,3 +42,10 @@ export async function getActiveSubscriptionPlanSlug(
   }
   return null;
 }
+
+export const WITHDRAWAL_REQUIRES_ACTIVE_PLAN_MESSAGE =
+  "Withdrawals require an active paid subscription. Choose a plan on Subscriptions to unlock payouts.";
+
+export async function hasActivePaidSubscription(userId: string): Promise<boolean> {
+  return (await getActiveSubscriptionPlanSlug(userId)) != null;
+}

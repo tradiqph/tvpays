@@ -14,6 +14,7 @@ import {
 
 // GET /api/dramas?platform=reelshort&q=...       → search
 // GET /api/dramas?platform=reelshort&cursor=...  → home feed (paginated)
+// GET /api/dramas?platform=netshort&section=...   → one home-feed section
 export async function GET(request: Request) {
   const supabase = await createClient();
   const {
@@ -26,6 +27,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
   const cursor = searchParams.get("cursor") ?? undefined;
+  const sectionRaw = searchParams.get("section")?.trim();
+  const section = sectionRaw && sectionRaw.length <= 64 ? sectionRaw : undefined;
+  if (q && q.length > 80) {
+    return NextResponse.json({ error: "Search is too long" }, { status: 400 });
+  }
 
   try {
     const access = await getDramaAccess(user.id);
@@ -36,7 +42,7 @@ export async function GET(request: Request) {
     await assertCanStreamEpisode(user.id, platform);
     const page = q
       ? await dramaSearch(platform, q)
-      : await dramaHome(platform, cursor);
+      : await dramaHome(platform, cursor, undefined, section);
     return NextResponse.json(page);
   } catch (e) {
     const status = e instanceof ShortDramaError ? e.status : 502;

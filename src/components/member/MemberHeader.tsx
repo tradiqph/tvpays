@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bell } from "lucide-react";
 import { TvPaysLogo } from "./TvPaysLogo";
+import { ProfileMenu } from "./ProfileMenu";
 import { SlideSheet } from "./SlideSheet";
 import { MemberNotificationsSheet } from "./MemberNotificationsSheet";
 import type { MemberNotification } from "@/lib/member-notifications";
+import { notificationAllowed, usePreferences } from "@/lib/preferences";
 
 const READ_STORAGE_KEY = "tvpays_notification_reads";
 
@@ -36,7 +37,13 @@ type Props = {
 export function MemberHeader({ variant = "default" }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [notifications, setNotifications] = useState<MemberNotification[]>([]);
+  const [allNotifications, setNotifications] = useState<MemberNotification[]>([]);
+  const [prefs] = usePreferences();
+  // Hide categories the member switched off in Settings.
+  const notifications = useMemo(
+    () => allNotifications.filter((n) => notificationAllowed(n.id, prefs)),
+    [allNotifications, prefs],
+  );
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
@@ -117,15 +124,7 @@ export function MemberHeader({ variant = "default" }: Props) {
               </span>
             ) : null}
           </button>
-          {variant === "default" ? (
-            <Link
-              href="/profile"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-400/40 bg-gradient-to-br from-sky-600 to-blue-900 shadow-[0_0_12px_rgba(0,150,255,0.35)]"
-              aria-label="Profile"
-            >
-              <span className="text-sm text-amber-200">👤</span>
-            </Link>
-          ) : null}
+          {variant === "default" ? <ProfileMenu /> : null}
         </div>
       </header>
 

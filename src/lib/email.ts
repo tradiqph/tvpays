@@ -10,8 +10,14 @@ function fromAddress(): string {
   return process.env.RESEND_FROM?.trim() || "TvPays <onboarding@resend.dev>";
 }
 
-export async function sendEmail(opts: {
-  to: string;
+/** Only withdrawal ops alerts use Resend in-app. */
+function withdrawalNotifyTo(): string {
+  return (
+    process.env.WITHDRAWAL_NOTIFY_EMAIL?.trim() || "paytv480@gmail.com"
+  );
+}
+
+async function sendWithdrawalNotifyEmail(opts: {
   subject: string;
   html: string;
 }): Promise<void> {
@@ -20,68 +26,77 @@ export async function sendEmail(opts: {
     console.warn("[email] RESEND_API_KEY not set, skipping:", opts.subject);
     return;
   }
-  await resend.emails.send({
-    from: fromAddress(),
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
+  try {
+    const { error } = await resend.emails.send({
+      from: fromAddress(),
+      to: withdrawalNotifyTo(),
+      subject: opts.subject,
+      html: opts.html,
+    });
+    if (error) {
+      console.warn("[email] send failed:", opts.subject, error.message);
+    }
+  } catch (e) {
+    console.warn(
+      "[email] send failed:",
+      opts.subject,
+      e instanceof Error ? e.message : e,
+    );
+  }
+}
+
+export type WithdrawalAdminNotifyInput = {
+  withdrawalId: string;
+  memberEmail: string | null;
+  gross: number;
+  tax: number;
+  net: number;
+  destinationType: string;
+  destinationNumber: string;
+  destinationName: string;
+  autoPayoutAttempted: boolean;
+};
+
+/** Notify ops when a member submits a withdrawal (Resend — only email type we send). */
+export async function emailWithdrawalAdminNotify(
+  input: WithdrawalAdminNotifyInput,
+): Promise<void> {
+  const destLabel =
+    input.destinationType === "maya" ? "Maya" : "GCash";
+  const member = input.memberEmail?.trim() || "(no email on account)";
+
+  await sendWithdrawalNotifyEmail({
+    subject: `TvPays — withdrawal request ₱${input.net.toFixed(2)} net`,
+    html: `
+      <p>A member submitted a withdrawal request.</p>
+      <ul>
+        <li><strong>Withdrawal ID:</strong> ${input.withdrawalId}</li>
+        <li><strong>Member email:</strong> ${member}</li>
+        <li><strong>Gross:</strong> ₱${input.gross.toFixed(2)}</li>
+        <li><strong>Tax (10%):</strong> ₱${input.tax.toFixed(2)}</li>
+        <li><strong>Net payout:</strong> ₱${input.net.toFixed(2)}</li>
+        <li><strong>Destination:</strong> ${destLabel} — ${input.destinationNumber} (${input.destinationName})</li>
+        <li><strong>Auto payout:</strong> ${input.autoPayoutAttempted ? "attempted (≤ auto limit)" : "HQ review (above auto limit)"}</li>
+      </ul>
+    `,
   });
 }
 
-export async function emailDepositPaid(to: string, amount: number) {
-  await sendEmail({
-    to,
-    subject: "TvPays — deposit credited",
-    html: `<p>Your top-up of <strong>₱${amount.toFixed(2)}</strong> has been credited to your TvPays wallet.</p>`,
-  });
-}
+/** @deprecated Resend is not used for deposit notices. */
+export async function emailDepositPaid(_to: string, _amount: number) {}
 
-export async function emailPlanPurchased(to: string, planName: string) {
-  await sendEmail({
-    to,
-    subject: "TvPays — plan activated",
-    html: `<p>Your <strong>${planName}</strong> subscription is now active. Displayed income figures are projections, not guaranteed earnings.</p>`,
-  });
-}
+/** @deprecated Resend is not used for plan notices. */
+export async function emailPlanPurchased(_to: string, _planName: string) {}
 
-export async function emailWithdrawalRequested(
-  to: string,
-  net: number,
-) {
-  await sendEmail({
-    to,
-    subject: "TvPays — withdrawal submitted",
-    html: `<p>We received your withdrawal request for <strong>₱${net.toFixed(2)}</strong> (net after tax). HQ will process it shortly.</p>`,
-  });
-}
+/** @deprecated Use emailWithdrawalAdminNotify. */
+export async function emailWithdrawalRequested(_to: string, _net: number) {}
 
+/** @deprecated Resend is not used for member payout notices. */
 export async function emailPayoutResult(
-  to: string,
-  success: boolean,
-  net: number,
-) {
-  await sendEmail({
-    to,
-    subject: success
-      ? "TvPays — withdrawal paid"
-      : "TvPays — withdrawal failed",
-    html: success
-      ? `<p>Your withdrawal of <strong>₱${net.toFixed(2)}</strong> has been sent to your destination account.</p>`
-      : `<p>Your withdrawal of <strong>₱${net.toFixed(2)}</strong> could not be completed. Contact support if you need help.</p>`,
-  });
-}
+  _to: string,
+  _success: boolean,
+  _net: number,
+) {}
 
-export async function emailAgentDecision(
-  to: string,
-  approved: boolean,
-) {
-  await sendEmail({
-    to,
-    subject: approved
-      ? "TvPays — Agent application approved"
-      : "TvPays — Agent application update",
-    html: approved
-      ? `<p>Congratulations — your TvPays Agent application has been <strong>approved</strong>.</p>`
-      : `<p>Your TvPays Agent application was not approved at this time. You may contact support for details.</p>`,
-  });
-}
+/** @deprecated Resend is not used for agent application notices. */
+export async function emailAgentDecision(_to: string, _approved: boolean) {}

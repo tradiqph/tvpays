@@ -97,8 +97,10 @@ export function ReferralsView() {
               </p>
               <p className="mt-2 text-xs leading-relaxed text-sky-100/75">
                 Earn {rateLine} when someone in your network{" "}
-                <span className="font-semibold text-white">purchases a plan</span>.
-                Top-ups alone do not pay commission.
+                <span className="font-semibold text-white">
+                  buys a plan or adds video access days
+                </span>
+                . Deposit top-ups alone do not pay commission.
               </p>
               <div className="mt-3 flex gap-2">
                 <CopyButton label="Copy code" text={data.referralCode} />
@@ -183,7 +185,7 @@ export function ReferralsView() {
               </div>
               {data.recentCommissions.length === 0 ? (
                 <GlassPanel className="py-6 text-center text-sm text-sky-200/65">
-                  No plan-purchase commissions yet.
+                  No referral commissions yet.
                 </GlassPanel>
               ) : (
                 <ul className="divide-y divide-sky-400/20 overflow-hidden rounded-2xl border border-sky-400/35 bg-[#0a2263]/60">

@@ -211,6 +211,13 @@ export function SubscriptionsView() {
             )}
           </p>
         )}
+        {!activePlanSlug && (
+          <p className="mb-2 rounded-xl border border-amber-400/35 bg-amber-950/35 px-3 py-2 text-center text-xs text-amber-100/90">
+            Withdrawals to GCash, Maya, or bank are unlocked only with an{" "}
+            <span className="font-semibold text-amber-200">active paid plan</span>
+            . Choose a tier below to subscribe.
+          </p>
+        )}
         <div className="mb-2 flex items-center justify-between">
           <button
             type="button"

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import type { ReactNode } from "react";
 
 type Props = {
@@ -13,12 +14,17 @@ export function PhoneFrame({ children, className = "" }: Props) {
         style={{ aspectRatio: "9 / 16" }}
       >
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#000814] via-[#001428] to-[#000814]"
+          className="pointer-events-none absolute inset-0 bg-[#02040a]"
           aria-hidden
         />
+        <img
+          src="/assets/branding/auth-bg.jpg"
+          alt=""
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-90"
+          draggable={false}
+        />
         <div
-          className="pointer-events-none absolute -right-1/4 -top-1/4 h-[70%] w-[90%] rotate-12 bg-gradient-to-bl from-sky-500/25 via-blue-600/10 to-transparent blur-3xl"
-          style={{ animation: "ambientPulse 6s ease-in-out infinite" }}
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#02040a]/55 via-[#02040a]/25 to-[#02040a]/85]"
           aria-hidden
         />
         <div

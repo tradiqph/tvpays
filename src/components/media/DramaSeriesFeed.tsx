@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ListVideo, Loader2, Lock, X } from "lucide-react";
+import { Bookmark, ListVideo, Lock, X } from "lucide-react";
+import { VideoLoaderOrb } from "@/components/media/VideoLoaderOrb";
 import { DramaPlayer } from "@/components/media/DramaPlayer";
 import type { DramaEpisodes, DramaPlatform } from "@/lib/shortdrama";
 import { getPreferences } from "@/lib/preferences";
+import { saveDramaToList, useDramaSavedList } from "@/lib/drama-saved-list";
 
 type Series = DramaEpisodes & { platform: DramaPlatform };
 
@@ -19,7 +21,11 @@ type Props = {
   proxiedPoster: (src: string | null | undefined) => string | null;
   onClose: () => void;
   onSelectEpisode: (s: Series, index: number) => void;
-  onEpisodeComplete: (watchSeconds: number) => void;
+  onEpisodeComplete: (
+    engagedWatchSeconds: number,
+    fileDurationSeconds: number | null,
+    peakPlaybackSeconds: number,
+  ) => void;
   onRetryStream: () => void;
 };
 
@@ -49,6 +55,16 @@ export function DramaSeriesFeed({
   const feedRef = useRef<HTMLDivElement>(null);
   const scrollProgrammatic = useRef(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [swipeHintVisible, setSwipeHintVisible] = useState(true);
+  const { isSaved, toggleDramaSaved } = useDramaSavedList();
+
+  useEffect(() => {
+    setSwipeHintVisible(true);
+    const t = window.setTimeout(() => setSwipeHintVisible(false), 3000);
+    return () => window.clearTimeout(t);
+  }, [series.id]);
+  const saved = isSaved(series.platform, series.id);
+  const currentEp = series.episodes[episodeIdx];
 
   const scrollToIndex = useCallback((index: number, smooth = true) => {
     const el = feedRef.current;
@@ -69,6 +85,26 @@ export function DramaSeriesFeed({
     // Align feed once when this series finishes loading (not on every index change).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesLoading, series.id]);
+
+  useEffect(() => {
+    if (!saved || !currentEp) return;
+    saveDramaToList({
+      dramaId: series.id,
+      platform: series.platform,
+      title: series.title,
+      cover: series.cover,
+      episodeNumber: currentEp.number,
+      episodeId: currentEp.id,
+    });
+  }, [
+    saved,
+    series.id,
+    series.platform,
+    series.title,
+    series.cover,
+    currentEp?.id,
+    currentEp?.number,
+  ]);
 
   const onFeedScroll = useCallback(() => {
     if (scrollProgrammatic.current) return;
@@ -140,7 +176,7 @@ export function DramaSeriesFeed({
               className="relative h-full w-full shrink-0 snap-start snap-always bg-black"
             >
               {active && pending && (
-                <Loader2 className="h-10 w-10 animate-spin text-sky-300" />
+                <VideoLoaderOrb variant="orbit" label="Loading episode…" />
               )}
               {active && !ep.isLocked && src && !pending && (
                 <div className="absolute inset-0">
@@ -200,18 +236,54 @@ export function DramaSeriesFeed({
             {episodeNotice}
           </p>
         )}
-        <p className="mt-1 text-[11px] text-white/50">Swipe up for the next episode</p>
+        {swipeHintVisible && !episodeNotice && (
+          <motion.p
+            className="mt-1 text-[11px] text-white/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            Swipe up for the next episode
+          </motion.p>
+        )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setPickerOpen(true)}
-        className="absolute right-3 top-[42%] z-20 flex flex-col items-center gap-1 rounded-xl bg-black/45 px-2.5 py-3 text-white ring-1 ring-white/25 backdrop-blur-sm"
-        aria-label="Episode list"
-      >
-        <ListVideo className="h-6 w-6" />
-        <span className="text-[10px] font-bold tracking-wide">EP</span>
-      </button>
+      <div className="absolute right-3 top-[38%] z-20 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="flex flex-col items-center gap-1 rounded-xl bg-black/45 px-2.5 py-3 text-white ring-1 ring-white/25 backdrop-blur-sm"
+          aria-label="Episode list"
+        >
+          <ListVideo className="h-6 w-6" />
+          <span className="text-[10px] font-bold tracking-wide">EP</span>
+        </button>
+        <button
+          type="button"
+          disabled={!currentEp}
+          onClick={() => {
+            if (!currentEp) return;
+            toggleDramaSaved({
+              dramaId: series.id,
+              platform: series.platform,
+              title: series.title,
+              cover: series.cover,
+              episodeNumber: currentEp.number,
+              episodeId: currentEp.id,
+            });
+          }}
+          className={`flex flex-col items-center gap-1 rounded-xl px-2.5 py-3 ring-1 backdrop-blur-sm ${
+            saved
+              ? "bg-sky-500/35 text-sky-100 ring-sky-300/50"
+              : "bg-black/45 text-white ring-white/25"
+          }`}
+          aria-label={saved ? "Remove from my list" : "Save to my list"}
+          aria-pressed={saved}
+        >
+          <Bookmark className={`h-6 w-6 ${saved ? "fill-current" : ""}`} />
+          <span className="text-[10px] font-bold tracking-wide">List</span>
+        </button>
+      </div>
 
       <AnimatePresence>
         {pickerOpen && (

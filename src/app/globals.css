@@ -16,7 +16,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-exo);
+  --font-display: var(--font-chakra);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -29,7 +30,13 @@ body {
 }
 
 body {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-exo), system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-chakra), var(--font-exo), system-ui, sans-serif;
 }
 
 @keyframes ambientPulse {
@@ -56,9 +63,69 @@ body {
   animation: neonPulse 2s ease-in-out infinite;
 }
 
+/* Halaska orb loaders (21st.dev / halaska-studio) */
+@keyframes halaska-orb-swell {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.45);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes halaska-orb-globe {
+  0% {
+    transform: translateX(-9px) scale(0.55);
+    opacity: 0.15;
+  }
+  50% {
+    transform: translateX(9px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-9px) scale(0.55);
+    opacity: 0.15;
+  }
+}
+
+@keyframes halaska-orb-spark {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes halaska-star-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  40% {
+    opacity: 0.5;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-neon-pulse {
     animation: none;
+  }
+
+  [data-halaska-orb-reduced] *,
+  [data-halaska-orb-reduced] {
+    animation: none !important;
   }
 }
 
@@ -69,4 +136,16 @@ body {
 
 *::-webkit-scrollbar {
   display: none;
+}
+
+/* Amount / numeric inputs: hide browser stepper arrows */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }

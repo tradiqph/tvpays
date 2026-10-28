@@ -1,6 +1,6 @@
 /**
  * StarPago HTTPS relay (fixed egress IP for merchant allowlist).
- * Pay-in only — TvPays uses PayMongo for HQ payouts.
+ * Pay-in and payout forward — fixed egress IP for StarPago allowlist.
  *
  * Env: RELAY_SECRET, STARPAGO_API_HOST (default ph.api.starpago.com), PORT (default 8787)
  */
@@ -15,6 +15,8 @@ const PORT = Number(process.env.PORT ?? 8787);
 const ALLOWED_PATHS = new Set([
   "/api/v2/payment/order/create",
   "/api/v2/payment/order/query",
+  "/api/v2/payout/order/create",
+  "/api/v2/payout/order/query",
   "/api/v2/merchant/balance",
 ]);
 

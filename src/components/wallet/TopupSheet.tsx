@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SlideSheet } from "@/components/member/SlideSheet";
 import { AlertDialog } from "@/components/member/AlertDialog";
+import { filterPayerNameLetters, filterPhMobileDigits } from "@/lib/starpago";
 
 type Props = {
   open: boolean;
@@ -85,16 +86,20 @@ export function TopupSheet({ open, onClose }: Props) {
         </div>
         <input
           required
+          type="tel"
+          inputMode="numeric"
+          maxLength={11}
+          pattern="09[0-9]{9}"
           placeholder="Mobile 09XXXXXXXXX"
           value={mobile}
-          onChange={(e) => setMobile(e.target.value)}
+          onChange={(e) => setMobile(filterPhMobileDigits(e.target.value))}
           className="mb-2 w-full rounded-xl border border-sky-800 bg-slate-950 px-3 py-2 text-white"
         />
         <input
           required
-          placeholder="Name on e-wallet"
+          placeholder="Name on e-wallet (letters only)"
           value={accountName}
-          onChange={(e) => setAccountName(e.target.value)}
+          onChange={(e) => setAccountName(filterPayerNameLetters(e.target.value))}
           className="mb-3 w-full rounded-xl border border-sky-800 bg-slate-950 px-3 py-2 text-white"
         />
         <button

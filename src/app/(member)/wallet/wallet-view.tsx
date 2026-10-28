@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
-  ChevronDown,
   ChevronRight,
   MoreVertical,
   Play,
@@ -19,9 +19,14 @@ import {
 } from "@/components/member/WalletIconArt";
 import { TopupSheet } from "@/components/wallet/TopupSheet";
 import { WithdrawSheet } from "@/components/wallet/WithdrawSheet";
+import { AlertDialog } from "@/components/member/AlertDialog";
 import { formatPhp } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { useCountUp } from "@/hooks/useCountUp";
+import { WalletActivityHub } from "@/components/wallet/WalletActivityHub";
+import { formatWalletWhen } from "@/lib/wallet-earnings";
+
+const LEDGER_PAGE_SIZE = 15;
 
 type LedgerRow = {
   id: string;
@@ -29,6 +34,17 @@ type LedgerRow = {
   entry_type: string;
   created_at: string;
   metadata: Record<string, unknown> | null;
+};
+
+type WithdrawalRow = {
+  id: string;
+  net_amount: number;
+  gross_amount: number;
+  status: string;
+  refund_status: string;
+  destination_type: string;
+  destination_number: string;
+  requested_at: string;
 };
 
 function referralLevelLabel(meta: Record<string, unknown> | null): string | null {
@@ -56,6 +72,7 @@ const entryMeta: Record<
   { label: string; icon: typeof Play; orb: Orb }
 > = {
   ad_reward: { label: "Ad Reward", icon: Play, orb: ORBS.green },
+  drama_episode: { label: "Episode reward", icon: Play, orb: ORBS.green },
   referral_ad: { label: "Referral Bonus", icon: UserPlus, orb: ORBS.magenta },
   referral_upgrade: {
     label: "Referral Gift",
@@ -92,20 +109,6 @@ const CARD_STYLES = {
     btnGlow: "rgba(34,197,94,0.7)",
   },
 } as const;
-
-function formatWhen(iso: string) {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const time = d.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${date}  ${time}`;
-}
 
 const listVariants = {
   hidden: {},
@@ -184,8 +187,21 @@ export function WalletView() {
   const [deposit, setDeposit] = useState(0);
   const [withdrawal, setWithdrawal] = useState(0);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [canWithdraw, setCanWithdraw] = useState(false);
+  const [withdrawBlockedOpen, setWithdrawBlockedOpen] = useState(false);
+  const [lastWithdrawal, setLastWithdrawal] = useState<WithdrawalRow | null>(
+    null,
+  );
+
+  const ledgerPages = Math.max(1, Math.ceil(ledgerTotal / LEDGER_PAGE_SIZE));
+  const ledgerFrom =
+    ledgerTotal === 0 ? 0 : (ledgerPage - 1) * LEDGER_PAGE_SIZE + 1;
+  const ledgerTo = Math.min(ledgerTotal, ledgerPage * LEDGER_PAGE_SIZE);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -194,23 +210,68 @@ export function WalletView() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: wallet } = await supabase
-      .from("wallets")
-      .select("deposit_balance, withdrawal_balance")
-      .eq("user_id", user.id)
-      .single();
+    await fetch("/api/wallet/withdrawals/sync", { method: "POST" }).catch(
+      () => {},
+    );
+
+    const [{ data: wallet }, { data: profile }] = await Promise.all([
+      supabase
+        .from("wallets")
+        .select("deposit_balance, withdrawal_balance")
+        .eq("user_id", user.id)
+        .single(),
+      supabase
+        .from("profiles")
+        .select("plan_slug, subscription_ends_at")
+        .eq("id", user.id)
+        .single(),
+    ]);
+
+    const paidActive =
+      profile?.plan_slug &&
+      profile.plan_slug !== "trial" &&
+      profile.subscription_ends_at &&
+      new Date(profile.subscription_ends_at).getTime() > Date.now();
+    setCanWithdraw(Boolean(paidActive));
 
     if (wallet) {
       setDeposit(Number(wallet.deposit_balance));
       setWithdrawal(Number(wallet.withdrawal_balance));
     }
 
-    const { data: rows } = await supabase
-      .from("wallet_ledger")
-      .select("id, amount, entry_type, created_at, metadata")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(20);
+    setLedgerLoading(true);
+    const from = (ledgerPage - 1) * LEDGER_PAGE_SIZE;
+    const to = from + LEDGER_PAGE_SIZE - 1;
+
+    const [{ count }, { data: rows }, { data: wdRows }] = await Promise.all([
+      supabase
+        .from("wallet_ledger")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+      supabase
+        .from("wallet_ledger")
+        .select("id, amount, entry_type, created_at, metadata")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+      supabase
+        .from("withdrawals")
+        .select(
+          "id, net_amount, gross_amount, status, refund_status, destination_type, destination_number, requested_at",
+        )
+        .eq("user_id", user.id)
+        .order("requested_at", { ascending: false })
+        .limit(1),
+    ]);
+    setLedgerLoading(false);
+
+    const total = count ?? 0;
+    setLedgerTotal(total);
+    const maxPage = Math.max(1, Math.ceil(total / LEDGER_PAGE_SIZE));
+    if (ledgerPage > maxPage) {
+      setLedgerPage(maxPage);
+      return;
+    }
 
     setLedger(
       (rows ?? []).map((r) => ({
@@ -218,11 +279,33 @@ export function WalletView() {
         amount: Number(r.amount),
       })),
     );
-  }, []);
+
+    const latest = wdRows?.[0];
+    setLastWithdrawal(
+      latest
+        ? {
+            ...latest,
+            net_amount: Number(latest.net_amount),
+            gross_amount: Number(latest.gross_amount),
+          }
+        : null,
+    );
+  }, [ledgerPage]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  function goLedgerPage(next: number) {
+    const p = Math.min(Math.max(1, next), ledgerPages);
+    if (p === ledgerPage) return;
+    setLedgerPage(p);
+  }
+
+  function refreshAfterWithdraw() {
+    if (ledgerPage !== 1) setLedgerPage(1);
+    else void load();
+  }
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -251,24 +334,36 @@ export function WalletView() {
               amount={withdrawal}
               icon={<WithdrawIconArt />}
               actionLabel="Withdraw"
-              onAction={() => setWithdrawOpen(true)}
+              onAction={() =>
+                canWithdraw ? setWithdrawOpen(true) : setWithdrawBlockedOpen(true)
+              }
             />
           </motion.div>
         </motion.div>
 
-        <div className="mb-2 mt-5 flex items-center justify-between">
-          <h2 className="text-xl font-extrabold tracking-tight text-white">
-            Income history
-          </h2>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-sky-400/40 bg-[#0b1d4d]/80 px-3 py-1.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]"
-          >
-            Latest <ChevronDown className="h-4 w-4" />
-          </button>
+        <div className="mt-5 space-y-6">
+          <WalletActivityHub lastWithdrawal={lastWithdrawal} />
+
+          <section className="w-full">
+        <div className="mb-3 flex items-end justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+              Earnings
+            </p>
+            <h2 className="text-lg font-bold text-white">Income history</h2>
+          </div>
+          {ledgerTotal > 0 && (
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Newest first
+            </span>
+          )}
         </div>
         <motion.ul
-          className="divide-y divide-sky-300/15 overflow-hidden rounded-2xl border border-sky-400/40 bg-gradient-to-b from-[#0d2a6e]/70 to-[#06143a]/80 shadow-[0_0_20px_rgba(40,120,255,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]"
+          className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060d24]/95"
+          style={{
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 40px rgba(0,0,0,0.3)",
+          }}
           variants={listVariants}
           initial="hidden"
           animate="show"
@@ -285,57 +380,102 @@ export function WalletView() {
               row.entry_type === "referral_upgrade"
                 ? referralLevelLabel(row.metadata)
                 : null;
+            const planName =
+              row.entry_type === "drama_episode" &&
+              typeof row.metadata?.plan_name === "string"
+                ? row.metadata.plan_name
+                : null;
+            const rowLabel = planName ? `${planName} episode` : meta.label;
             return (
-              <motion.li key={row.id} variants={rowVariants}>
-                <div className="flex items-center gap-3 px-3 py-2.5">
+              <motion.li
+                key={row.id}
+                variants={rowVariants}
+                className="border-t border-white/[0.06] first:border-t-0"
+              >
+                <div className="flex items-center gap-3 px-4 py-3">
                   <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-white/50"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10"
                     style={{
-                      background: `radial-gradient(circle at 35% 28%, ${meta.orb.from}, ${meta.orb.to} 75%)`,
-                      boxShadow: `0 0 12px ${meta.orb.glow}, inset 0 2px 3px rgba(255,255,255,0.55), inset 0 -4px 6px rgba(0,0,0,0.3)`,
+                      background: `linear-gradient(145deg, ${meta.orb.from}33, ${meta.orb.to}88)`,
+                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15)`,
                     }}
                   >
                     <Icon
-                      className="h-5 w-5 fill-white/90 text-white"
+                      className="h-4 w-4 text-white/95"
                       strokeWidth={2.2}
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-semibold text-white">
-                      {meta.label}
+                    <p className="truncate text-sm font-semibold text-white">
+                      {rowLabel}
                       {refLevel ? (
-                        <span className="ml-1 text-sm font-medium text-sky-300/90">
-                          ({refLevel})
+                        <span className="ml-1 text-xs font-medium text-sky-300/80">
+                          {refLevel}
                         </span>
                       ) : null}
                     </p>
-                    <p className="whitespace-pre text-xs text-slate-300/90">
-                      {formatWhen(row.created_at)}
+                    <p className="text-[11px] text-slate-500">
+                      {formatWalletWhen(row.created_at)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <p
-                      className={`text-lg font-extrabold ${
-                        positive
-                          ? "text-emerald-300 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]"
-                          : "text-red-400 drop-shadow-[0_0_6px_rgba(248,113,113,0.5)]"
-                      }`}
-                    >
-                      {positive ? "+ " : "− "}
-                      {formatPhp(Math.abs(row.amount))}
-                    </p>
-                    <ChevronRight className="h-5 w-5 text-slate-300" />
-                  </div>
+                  <p
+                    className={`shrink-0 font-mono text-sm font-bold tabular-nums ${
+                      positive ? "text-emerald-300" : "text-rose-400"
+                    }`}
+                  >
+                    {positive ? "+" : "−"}
+                    {formatPhp(Math.abs(row.amount))}
+                  </p>
                 </div>
               </motion.li>
             );
           })}
-          {ledger.length === 0 && (
+          {ledger.length === 0 && !ledgerLoading && (
             <li className="py-8 text-center text-sm text-slate-400">
               No income yet — watch ads on Media or complete tasks.
             </li>
           )}
+          {ledgerLoading && ledger.length === 0 && (
+            <li className="py-8 text-center text-sm text-slate-400">
+              Loading…
+            </li>
+          )}
         </motion.ul>
+        {ledgerTotal > LEDGER_PAGE_SIZE && (
+          <nav
+            className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-[#070f28]/80 px-3 py-2.5"
+            aria-label="Income history pagination"
+          >
+            <button
+              type="button"
+              disabled={ledgerPage <= 1 || ledgerLoading}
+              onClick={() => goLedgerPage(ledgerPage - 1)}
+              className="rounded-lg border border-sky-400/25 px-3 py-1.5 text-xs font-semibold text-sky-100 transition hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              Previous
+            </button>
+            <p className="text-center text-[11px] text-slate-400">
+              <span className="font-mono text-slate-300">
+                {ledgerFrom}–{ledgerTo}
+              </span>{" "}
+              of {ledgerTotal}
+              <span className="hidden sm:inline">
+                {" "}
+                · Page {ledgerPage}/{ledgerPages}
+              </span>
+            </p>
+            <button
+              type="button"
+              disabled={ledgerPage >= ledgerPages || ledgerLoading}
+              onClick={() => goLedgerPage(ledgerPage + 1)}
+              className="rounded-lg border border-sky-400/25 px-3 py-1.5 text-xs font-semibold text-sky-100 transition hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              Next
+            </button>
+          </nav>
+        )}
+          </section>
+        </div>
       </div>
 
       <TopupSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
@@ -343,7 +483,24 @@ export function WalletView() {
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
         maxAmount={withdrawal}
-        onSuccess={load}
+        onSuccess={refreshAfterWithdraw}
+      />
+      <AlertDialog
+        open={withdrawBlockedOpen}
+        onClose={() => setWithdrawBlockedOpen(false)}
+        title="Subscription required"
+        message={
+          <>
+            Withdrawals require an active paid subscription.{" "}
+            <Link
+              href="/subscriptions"
+              className="font-semibold text-sky-300 underline"
+              onClick={() => setWithdrawBlockedOpen(false)}
+            >
+              Choose a plan on Subscriptions
+            </Link>
+          </>
+        }
       />
     </div>
   );

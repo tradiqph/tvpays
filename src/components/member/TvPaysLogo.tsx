@@ -1,24 +1,34 @@
 /* eslint-disable @next/next/no-img-element */
-export function TvPaysLogo({ compact }: { compact?: boolean }) {
+import { BRAND } from "@/lib/branding";
+
+type Props = {
+  compact?: boolean;
+  className?: string;
+};
+
+export function TvPaysLogo({ compact, className }: Props) {
   if (compact) {
     return (
       <img
-        src="/assets/branding/tvpays-mark.png"
+        src={BRAND.mark}
         alt="TvPays"
         width={36}
         height={36}
-        className="h-9 w-9 object-contain drop-shadow-[0_0_8px_rgba(255,200,0,0.45)]"
+        className={className ?? "h-9 w-9 object-contain drop-shadow-[0_0_10px_rgba(255,200,0,0.4)]"}
       />
     );
   }
 
   return (
     <img
-      src="/assets/branding/tvpays-logo.png"
-      alt="TvPays — Watch • Click • Earn"
-      width={120}
-      height={54}
-      className="h-12 w-auto object-contain drop-shadow-[0_0_10px_rgba(56,140,255,0.35)]"
+      src={BRAND.logo}
+      alt={BRAND.alt}
+      width={168}
+      height={72}
+      className={
+        className ??
+        "h-10 w-auto max-w-[min(100%,220px)] object-contain object-left drop-shadow-[0_8px_20px_rgba(0,60,160,0.45)]"
+      }
     />
   );
 }

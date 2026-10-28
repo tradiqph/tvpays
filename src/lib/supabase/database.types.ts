@@ -385,7 +385,11 @@ export type Database = {
           net_amount: number;
           paymongo_transfer_id: string | null;
           payout_attempt: number;
+          refund_status: string;
           requested_at: string;
+          starpago_mer_order_no: string | null;
+          starpago_order_no: string | null;
+          starpago_order_status: number | null;
           status: Database["public"]["Enums"]["withdrawal_status"];
           tax_amount: number;
           user_id: string;
@@ -402,7 +406,11 @@ export type Database = {
           net_amount: number;
           paymongo_transfer_id?: string | null;
           payout_attempt?: number;
+          refund_status?: string;
           requested_at?: string;
+          starpago_mer_order_no?: string | null;
+          starpago_order_no?: string | null;
+          starpago_order_status?: number | null;
           status?: Database["public"]["Enums"]["withdrawal_status"];
           tax_amount: number;
           user_id: string;
@@ -419,7 +427,11 @@ export type Database = {
           net_amount?: number;
           paymongo_transfer_id?: string | null;
           payout_attempt?: number;
+          refund_status?: string;
           requested_at?: string;
+          starpago_mer_order_no?: string | null;
+          starpago_order_no?: string | null;
+          starpago_order_status?: number | null;
           status?: Database["public"]["Enums"]["withdrawal_status"];
           tax_amount?: number;
           user_id?: string;
@@ -452,7 +464,8 @@ export type Database = {
         | "processing"
         | "completed"
         | "failed"
-        | "rejected";
+        | "rejected"
+        | "frozen";
     };
     CompositeTypes: Record<string, never>;
   };

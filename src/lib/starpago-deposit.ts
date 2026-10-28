@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { createAdminClient, appOrigin } from "@/lib/supabase/admin";
-import { MIN_TOPUP_PHP } from "@/lib/plans";
+import { MAX_TOPUP_PHP, MIN_TOPUP_PHP } from "@/lib/plans";
 import {
   STARPAGO_MIN_AMOUNT_PHP,
   createPayinOrder,
@@ -51,6 +51,12 @@ export async function createMemberStarpagoDeposit(
   if (!Number.isFinite(amount) || amount < MIN_TOPUP_PHP) {
     return NextResponse.json(
       { error: `Minimum top-up is ₱${MIN_TOPUP_PHP}` },
+      { status: 400 },
+    );
+  }
+  if (amount > MAX_TOPUP_PHP) {
+    return NextResponse.json(
+      { error: `Maximum top-up per request is ₱${MAX_TOPUP_PHP.toLocaleString("en-PH")}` },
       { status: 400 },
     );
   }

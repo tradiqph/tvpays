@@ -3,8 +3,13 @@ import { appOrigin } from "@/lib/supabase/admin";
 
 export const STARPAGO_EWALLET_FEE_RATE = 0.045;
 export const STARPAGO_MIN_AMOUNT_PHP = 100;
+/** Pay-in (collection) order create */
 export const STARPAGO_PAY_METHOD_GCASH = "PH_GCASH";
 export const STARPAGO_PAY_METHOD_MAYA = "PH_MAYA";
+
+/** Payout (disbursement) order create — distinct from pay-in codes */
+export const STARPAGO_PAYOUT_PAY_METHOD_GCASH = "PH_DF_GCASH";
+export const STARPAGO_PAYOUT_PAY_METHOD_MAYA = "PH_DF_MAYA";
 
 export type StarpagoMemberMethod = "gcash" | "maya";
 
@@ -20,6 +25,14 @@ export function parseStarpagoMemberMethod(
 
 export function starpagoPayMethodFromMember(method: StarpagoMemberMethod): string {
   return method === "maya" ? STARPAGO_PAY_METHOD_MAYA : STARPAGO_PAY_METHOD_GCASH;
+}
+
+export function starpagoPayoutPayMethodFromMember(
+  method: StarpagoMemberMethod,
+): string {
+  return method === "maya"
+    ? STARPAGO_PAYOUT_PAY_METHOD_MAYA
+    : STARPAGO_PAYOUT_PAY_METHOD_GCASH;
 }
 
 export function starpagoEwalletLabel(method: StarpagoMemberMethod): string {
@@ -178,10 +191,23 @@ export function normalizePhMobile(input: string): string | null {
   return null;
 }
 
+/** Digits only, max 11 — for mobile inputs (09XXXXXXXXX). */
+export function filterPhMobileDigits(input: string): string {
+  return input.replace(/\D/g, "").slice(0, 11);
+}
+
+/** Letters and spaces only — for e-wallet account holder name. */
+export function filterPayerNameLetters(input: string): string {
+  return input.replace(/[^\p{L}\s]/gu, "");
+}
+
 export function validateGcashPayerName(name: string): string | null {
-  const t = name.trim();
+  const t = name.trim().replace(/\s+/g, " ");
   if (t.length < 2) return "Enter the name on your e-wallet account";
   if (t.length > 80) return "Name is too long";
+  if (!/^[\p{L}\s]+$/u.test(t)) {
+    return "Account name must use letters only (no numbers)";
+  }
   return null;
 }
 

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { sendPasswordResetEmail } from "@/lib/email/password-reset";
+import { normalizeEmailInput } from "@/lib/security/input";
 
 export async function POST(request: Request) {
-  const { email } = (await request.json()) as { email?: string };
-  if (!email?.trim()) {
+  const { email: raw } = (await request.json()) as { email?: string };
+  const email = normalizeEmailInput(raw);
+  if (!email) {
     return NextResponse.json({ error: "Email is required." }, { status: 400 });
   }
 

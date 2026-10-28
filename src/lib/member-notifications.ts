@@ -106,7 +106,7 @@ export async function getMemberNotifications(
   const since = new Date(now - 14 * 86_400_000).toISOString();
   const { data: withdrawals } = await admin
     .from("withdrawals")
-    .select("id, status, net_amount, requested_at, completed_at, failure_reason")
+    .select("id, status, net_amount, requested_at, completed_at, failure_reason, refund_status")
     .eq("user_id", userId)
     .gte("requested_at", since)
     .order("requested_at", { ascending: false })
@@ -117,8 +117,8 @@ export async function getMemberNotifications(
     if (row.status === "pending" || row.status === "processing") {
       items.push({
         id: `withdrawal-pending-${row.id}`,
-        title: "Withdrawal processing",
-        body: `${formatPhp(Number(row.net_amount))} is being reviewed.`,
+        title: "Withdrawal pending",
+        body: `${formatPhp(Number(row.net_amount))} is processing.`,
         href: "/wallet",
         createdAt: row.requested_at,
       });
@@ -130,13 +130,20 @@ export async function getMemberNotifications(
         href: "/wallet",
         createdAt: at,
       });
-    } else if (row.status === "failed" || row.status === "rejected") {
+    } else if (
+      row.status === "failed" ||
+      row.status === "rejected" ||
+      row.status === "frozen"
+    ) {
+      const refundPending =
+        row.status === "frozen" || row.refund_status !== "completed";
       items.push({
         id: `withdrawal-failed-${row.id}`,
-        title: "Withdrawal needs attention",
-        body:
-          row.failure_reason?.trim() ||
-          `${formatPhp(Number(row.net_amount))} could not be completed. Check Wallet for details.`,
+        title: "Withdrawal failed",
+        body: refundPending
+          ? `${formatPhp(Number(row.net_amount))} — refund pending. Check Wallet for details.`
+          : row.failure_reason?.trim() ||
+            `${formatPhp(Number(row.net_amount))} could not be completed. Funds were returned to your balance.`,
         href: "/wallet",
         createdAt: at,
       });

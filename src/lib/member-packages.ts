@@ -6,6 +6,8 @@ import {
   type PlanSlug,
 } from "@/lib/plans";
 import { getActiveSubscriptionPlanSlug } from "@/lib/membership";
+import { maxDailyEpisodesForStack } from "@/lib/activated-plans";
+import { repairStackedEpisodeRewardsIfNeeded } from "@/lib/economy";
 import { manilaViewDate } from "@/lib/drama-access";
 import { formatPhp } from "@/lib/format";
 
@@ -84,24 +86,6 @@ function sumEarningsInWindow(
   }, 0);
 }
 
-function countEpisodesInWindow(
-  rows: { created_at: string; reward_amount: number }[],
-  startIso: string,
-  endIso: string,
-): number {
-  const start = new Date(startIso).getTime();
-  const end = new Date(endIso).getTime();
-  return rows.filter((r) => {
-    const t = new Date(r.created_at).getTime();
-    return t >= start && t < end && Number(r.reward_amount) > 0;
-  }).length;
-}
-
-function periodDayCount(startIso: string, endIso: string): number {
-  const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
-  return Math.max(1, Math.ceil(ms / 86_400_000));
-}
-
 export async function getMemberPackages(userId: string): Promise<MemberPackagesPayload> {
   const admin = createAdminClient();
   const nowIso = new Date().toISOString();
@@ -137,15 +121,19 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
     0,
   );
 
-  const { data: completionRows } = await admin
-    .from("drama_episode_completions")
-    .select("created_at, reward_amount, view_date")
-    .eq("user_id", userId)
-    .gt("reward_amount", 0);
-
-  const completions = completionRows ?? [];
   const today = manilaViewDate();
-  const episodesToday = completions.filter((r) => r.view_date === today).length;
+  await repairStackedEpisodeRewardsIfNeeded(userId);
+
+  const { count: episodesTodayCount, error: episodesTodayError } = await admin
+    .from("drama_episode_completions")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("view_date", today);
+
+  if (episodesTodayError) {
+    console.error("[member-packages] episodes today", episodesTodayError.message);
+  }
+  const episodesToday = episodesTodayCount ?? 0;
 
   const purchaseList = purchases ?? [];
   const packages: ActivatedPackage[] = [];
@@ -253,37 +241,46 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
 
   const displayPackages = [...packages].reverse();
 
-  const planTasks: PlanPackageTask[] = packagePeriods
-    .map(({ pkg, periodStart, periodEnd }) => {
-      const plan = planBySlug(pkg.slug)!;
-      const isActiveToday = pkg.status === "active";
-      const progress = isActiveToday
-        ? episodesToday
-        : countEpisodesInWindow(completions, periodStart, periodEnd);
-      const target = isActiveToday
-        ? pkg.episodesPerDay
-        : periodDayCount(periodStart, periodEnd) * pkg.episodesPerDay;
+  const slugToPeriod = new Map<
+    PlanSlug,
+    (typeof packagePeriods)[number]
+  >();
+  for (const period of packagePeriods) {
+    if (period.pkg.slug === "trial") continue;
+    slugToPeriod.set(period.pkg.slug, period);
+  }
+  const stackedPaidSlugs = [...slugToPeriod.keys()].sort(
+    (a, b) =>
+      (planBySlug(b)?.episodesPerDay ?? 0) -
+      (planBySlug(a)?.episodesPerDay ?? 0),
+  );
 
-      return {
-        id: `episodes-${pkg.slug}-${pkg.purchasedAt}`,
-        planSlug: pkg.slug,
-        planName: pkg.name,
-        status: pkg.status,
-        progress,
-        target,
-        perEpisodeDisplay: adRewardPerView(plan),
-        dailyPotentialDisplay: pkg.dailyPotential,
-        done: progress >= target,
-        periodLabel: isActiveToday ? "Today" : "While on this plan",
-      };
-    })
-    .reverse();
+  const planTasks: PlanPackageTask[] = stackedPaidSlugs.map((slug) => {
+    const { pkg } = slugToPeriod.get(slug)!;
+    const plan = planBySlug(slug)!;
+    const target = pkg.episodesPerDay;
+    const progress = Math.min(episodesToday, target);
+
+    return {
+      id: `episodes-${slug}`,
+      planSlug: slug,
+      planName: pkg.name,
+      status: pkg.status,
+      progress,
+      target,
+      perEpisodeDisplay: adRewardPerView(plan),
+      dailyPotentialDisplay: pkg.dailyPotential,
+      done: episodesToday >= target,
+      periodLabel: "Today",
+    };
+  });
 
   const activePackages = displayPackages.filter((p) => p.status === "active");
-  const todayTargetActive = activePackages.reduce(
-    (s, p) => s + p.episodesPerDay,
-    0,
-  );
+  const todayTargetActive =
+    stackedPaidSlugs.length > 0
+      ? maxDailyEpisodesForStack(stackedPaidSlugs)
+      : activePackages.reduce((s, p) => Math.max(s, p.episodesPerDay), 0) ||
+        effectivePlan.episodesPerDay;
   const dailySlotsAllActivated = displayPackages.reduce(
     (s, p) => s + p.episodesPerDay,
     0,

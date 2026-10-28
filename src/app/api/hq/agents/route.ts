@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient, isHqUser } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getHqSession } from "@/lib/hq/auth";
+import { logHqAction } from "@/lib/hq/audit";
 import { emailAgentDecision } from "@/lib/email";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !isHqUser(user)) {
+  const session = await getHqSession();
+  if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -33,6 +31,12 @@ export async function POST(request: Request) {
     .update({ status, reviewed_at: new Date().toISOString() })
     .eq("user_id", user_id)
     .eq("status", "pending");
+
+  await logHqAction(
+    session.user,
+    approve ? "agent.approve" : "agent.reject",
+    { type: "member", id: user_id },
+  );
 
   const { data: authUser } = await admin.auth.admin.getUserById(user_id);
   if (authUser.user?.email) {
