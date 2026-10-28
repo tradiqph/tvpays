@@ -6,6 +6,7 @@ import {
   getDramaAccess,
 } from "@/lib/drama-access";
 import {
+  dramaEpisodes,
   dramaStream,
   resolvePlatform,
   ShortDramaError,
@@ -38,7 +39,16 @@ export async function GET(
       platform = access.defaultPlatform as typeof platform;
     }
     await assertCanStreamEpisode(user.id, platform);
-    return NextResponse.json(await dramaStream(platform, id, episode));
+    const stream = await dramaStream(platform, id, episode);
+    if (!stream.videoUrl) {
+      const catalog = await dramaEpisodes(platform, id);
+      const fromList = catalog.episodes.find((e) => e.number === episode);
+      if (fromList?.videoUrl) {
+        stream.videoUrl = fromList.videoUrl;
+        if (!stream.image && fromList.image) stream.image = fromList.image;
+      }
+    }
+    return NextResponse.json(stream);
   } catch (e) {
     if (e instanceof DramaAccessError) {
       const status =

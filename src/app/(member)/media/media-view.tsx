@@ -359,9 +359,12 @@ export function MediaView({ platforms }: { platforms: PlatformOption[] }) {
       const r = await getJson<{ videoUrl: string | null }>(
         `/api/dramas/${encodeURIComponent(s.id)}/stream?platform=${s.platform}&episode=${ep.number}`,
       );
-      setStreamUrls((m) => ({ ...m, [ep.id]: r.videoUrl }));
+      setStreamUrls((m) => ({
+        ...m,
+        [ep.id]: r.videoUrl ?? ep.videoUrl ?? null,
+      }));
     } catch {
-      setStreamUrls((m) => ({ ...m, [ep.id]: null }));
+      setStreamUrls((m) => ({ ...m, [ep.id]: ep.videoUrl ?? null }));
     } finally {
       setStreamLoading(false);
     }

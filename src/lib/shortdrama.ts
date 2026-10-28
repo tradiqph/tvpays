@@ -2,6 +2,10 @@
 // The Secure Token must never reach the browser — only import this from
 // route handlers / server components.
 
+import { normalizePlaybackUrl } from "@/lib/drama-playback";
+
+export { normalizePlaybackUrl };
+
 export type DramaSummary = {
   id: string;
   title: string;
@@ -188,15 +192,6 @@ async function call(
 
 function stories(r: RawResponse): RawStory[] {
   return (r.data?.categories ?? []).flatMap((c) => c.stories ?? []);
-}
-
-/** DramaSDK often returns `http://` CDN links; browsers block those on HTTPS pages. */
-export function normalizePlaybackUrl(
-  url: string | null | undefined,
-): string | null {
-  if (!url) return null;
-  if (url.startsWith("http://")) return `https://${url.slice(7)}`;
-  return url;
 }
 
 function toSummary(s: RawStory): DramaSummary {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type Hls from "hls.js";
 import { getPreferences } from "@/lib/preferences";
+import { memberPlaybackSrc } from "@/lib/drama-playback";
 import { VideoLoaderOrb } from "@/components/media/VideoLoaderOrb";
 
 type Props = {
@@ -20,10 +21,6 @@ type Props = {
   /** `feed` fills vertical watch UI; `card` is the catalog sheet size. */
   layout?: "card" | "feed";
 };
-
-function toHttps(url: string): string {
-  return url.startsWith("http://") ? `https://${url.slice(7)}` : url;
-}
 
 /** Vertical HLS player: hls.js on desktop Chrome/Edge; native HLS on Safari/iOS. */
 export function DramaPlayer({
@@ -66,8 +63,15 @@ export function DramaPlayer({
 
     const prefs = getPreferences();
     video.muted = prefs.startMuted;
-    const playbackSrc = toHttps(src);
-    const isHls = /\.m3u8(\?|$)/i.test(playbackSrc);
+    const playbackSrc = memberPlaybackSrc(src);
+    if (!playbackSrc) {
+      setError("Couldn't load this episode.");
+      setBuffering(false);
+      return;
+    }
+    const isHls =
+      playbackSrc.includes("/api/dramas/relay") ||
+      /\.m3u8(\?|$)/i.test(playbackSrc);
 
     const onVideoError = () => {
       if (!cancelled && !isHls) {

@@ -1,33 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isAllowedDramaCdnUrl } from "@/lib/drama-cdn-url";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
 // Covers come from many provider CDNs; serving them same-origin avoids browsers
 // and extensions that block third-party images.
-function isAllowedUrl(raw: string | null): URL | null {
-  if (!raw) return null;
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return null;
-  }
-  const host = url.hostname.toLowerCase();
-  if (url.protocol !== "https:") return null;
-  // Public hostnames only: no IP literals, localhost or internal names.
-  if (
-    !host.includes(".") ||
-    host === "localhost" ||
-    host.endsWith(".local") ||
-    host.endsWith(".internal") ||
-    /^[\d.]+$/.test(host) ||
-    host.includes(":")
-  ) {
-    return null;
-  }
-  return url;
-}
 
 // GET /api/dramas/cover?url=https://cdn.example.com/cover.jpg
 export async function GET(request: Request) {
@@ -39,15 +17,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = isAllowedUrl(new URL(request.url).searchParams.get("url"));
+  const url = isAllowedDramaCdnUrl(
+    new URL(request.url).searchParams.get("url"),
+  );
   if (!url) {
     return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
   }
 
+  // Do not use Next.js fetch cache: responses over 2MB cannot be stored and log errors.
   const upstream = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (TvPays cover proxy)" },
     redirect: "error",
-    next: { revalidate: 86400 },
+    cache: "no-store",
   }).catch(() => null);
 
   const type = upstream?.headers.get("content-type") ?? "";
