@@ -8,6 +8,7 @@ import { MemberSelfPanel } from "@/components/hq/MemberSelfPanel";
 import { getHqSession } from "@/lib/hq/auth";
 import { planBySlug } from "@/lib/plans";
 import { dateTime, humanize, php } from "@/lib/hq/format";
+import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { getHqTimeContext } from "@/lib/hq/now";
 
 async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +22,7 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
     admin.from("wallets").select("deposit_balance, spending_balance, withdrawal_balance").eq("user_id", id).maybeSingle(),
     admin.auth.admin.getUserById(id),
     admin.from("wallet_ledger").select("id, amount, bucket, entry_type, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(15),
-    admin.from("withdrawals").select("id, net_amount, status, destination_type, requested_at").eq("user_id", id).order("requested_at", { ascending: false }).limit(8),
+    admin.from("withdrawals").select("id, net_amount, status, destination_type, requested_at").eq("user_id", id).eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE).order("requested_at", { ascending: false }).limit(8),
     admin.from("starpago_deposits").select("id, amount, status, pay_method, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(8),
     admin.from("profiles").select("id", { count: "exact", head: true }).eq("referred_by", id),
     admin.from("hq_audit_log").select("id, action, actor_email, details, created_at").eq("target_id", id).order("created_at", { ascending: false }).limit(10),

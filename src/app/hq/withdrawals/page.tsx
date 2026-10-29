@@ -6,6 +6,7 @@ import { WithdrawalActions } from "@/components/hq/actions";
 import { SearchBox } from "@/components/hq/controls";
 import { dateTime, php, safeSearch } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
+import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 
 const PAGE_SIZE = 25;
 const STATUSES = ["pending", "processing", "frozen", "completed", "failed", "rejected"] as const;
@@ -46,7 +47,13 @@ async function StatusTabs({ searchParams }: { searchParams: Promise<Params> }) {
   const active = statusOf(params);
   const admin = createAdminClient();
   const counts = await Promise.all(
-    STATUSES.map((s) => admin.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", s)),
+    STATUSES.map((s) =>
+      admin
+        .from("withdrawals")
+        .select("id", { count: "exact", head: true })
+        .eq("status", s)
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
+    ),
   );
   return (
     <Tabs
@@ -83,6 +90,7 @@ async function WithdrawalsTable({ searchParams }: { searchParams: Promise<Params
     )
     // Oldest first while reviewing so nobody waits longest; newest first elsewhere.
     .order("requested_at", { ascending: status === "pending" })
+    .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (status !== "all") query = query.eq("status", status);
   if (q) query = query.or(`destination_number.ilike.%${q}%,destination_name.ilike.%${q}%`);

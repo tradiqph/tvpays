@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { planBySlug } from "@/lib/plans";
 import { safePostgrestSearch } from "@/lib/security/input";
 
@@ -167,6 +168,7 @@ export async function fetchMemberAuditWithdrawals(
       { count: "exact" },
     )
     .eq("user_id", userId)
+    .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
     .order("requested_at", { ascending: false })
     .range(off, off + lim - 1);
 

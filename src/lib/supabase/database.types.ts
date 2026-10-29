@@ -381,6 +381,7 @@ export type Database = {
           destination_type: string;
           failure_reason: string | null;
           gross_amount: number;
+          hidden_from_history: boolean;
           id: string;
           net_amount: number;
           paymongo_transfer_id: string | null;
@@ -402,6 +403,7 @@ export type Database = {
           destination_type: string;
           failure_reason?: string | null;
           gross_amount: number;
+          hidden_from_history?: boolean;
           id?: string;
           net_amount: number;
           paymongo_transfer_id?: string | null;
@@ -423,6 +425,7 @@ export type Database = {
           destination_type?: string;
           failure_reason?: string | null;
           gross_amount?: number;
+          hidden_from_history?: boolean;
           id?: string;
           net_amount?: number;
           paymongo_transfer_id?: string | null;

@@ -7,6 +7,9 @@ export function isSuperAdminRole(role: unknown): boolean {
   return role === "super_admin";
 }
 
+/** Filter for member/HQ withdrawal lists (hidden rows remain in DB for audit). */
+export const WITHDRAWAL_LIST_VISIBLE = false;
+
 export function computeWithdrawalTaxAndNet(
   gross: number,
   options?: { taxExempt?: boolean },

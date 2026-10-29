@@ -23,6 +23,7 @@ import { WithdrawSheet } from "@/components/wallet/WithdrawSheet";
 import type { WalletTransferDirection } from "@/lib/wallet-transfer";
 import { AlertDialog } from "@/components/member/AlertDialog";
 import { formatPhp } from "@/lib/format";
+import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { createClient } from "@/lib/supabase/client";
 import { useCountUp } from "@/hooks/useCountUp";
 import { WalletActivityHub } from "@/components/wallet/WalletActivityHub";
@@ -286,6 +287,7 @@ export function WalletView() {
           "id, net_amount, gross_amount, status, refund_status, destination_type, destination_number, requested_at",
         )
         .eq("user_id", user.id)
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
         .order("requested_at", { ascending: false })
         .limit(1),
     ]);

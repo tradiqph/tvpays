@@ -13,6 +13,7 @@ import {
   formatWalletWhen,
 } from "@/lib/wallet-earnings";
 import { useCountUp } from "@/hooks/useCountUp";
+import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 
 const PAGE_SIZE = 12;
 
@@ -120,13 +121,15 @@ export function WithdrawalHistoryView() {
       supabase
         .from("withdrawals")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id),
+        .eq("user_id", user.id)
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
       supabase
         .from("withdrawals")
         .select(
           "id, net_amount, gross_amount, status, refund_status, destination_type, destination_number, requested_at",
         )
         .eq("user_id", user.id)
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
         .order("requested_at", { ascending: false })
         .range(rangeFrom, rangeTo),
       supabase
@@ -139,7 +142,8 @@ export function WithdrawalHistoryView() {
         .from("withdrawals")
         .select("gross_amount")
         .eq("user_id", user.id)
-        .eq("status", "completed"),
+        .eq("status", "completed")
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
     ]);
 
     const earned =
