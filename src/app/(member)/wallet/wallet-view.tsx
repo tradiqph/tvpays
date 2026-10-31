@@ -23,6 +23,10 @@ import { WithdrawSheet } from "@/components/wallet/WithdrawSheet";
 import type { WalletTransferDirection } from "@/lib/wallet-transfer";
 import { AlertDialog } from "@/components/member/AlertDialog";
 import { formatPhp } from "@/lib/format";
+import {
+  applyHiddenWithdrawalLedgerExclusion,
+  filterLedgerRowsForDisplay,
+} from "@/lib/wallet-ledger-visibility";
 import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { createClient } from "@/lib/supabase/client";
 import { useCountUp } from "@/hooks/useCountUp";
@@ -270,17 +274,37 @@ export function WalletView() {
     const from = (ledgerPage - 1) * LEDGER_PAGE_SIZE;
     const to = from + LEDGER_PAGE_SIZE - 1;
 
+    const { data: hiddenWdRows } = await supabase
+      .from("withdrawals")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("hidden_from_history", true);
+    const hiddenWithdrawalIds = new Set(
+      (hiddenWdRows ?? []).map((r) => r.id),
+    );
+
+    let ledgerCountQuery = supabase
+      .from("wallet_ledger")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    let ledgerRowsQuery = supabase
+      .from("wallet_ledger")
+      .select("id, amount, entry_type, created_at, metadata, reference_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    ledgerCountQuery = applyHiddenWithdrawalLedgerExclusion(
+      ledgerCountQuery,
+      hiddenWithdrawalIds,
+    );
+    ledgerRowsQuery = applyHiddenWithdrawalLedgerExclusion(
+      ledgerRowsQuery,
+      hiddenWithdrawalIds,
+    );
+
     const [{ count }, { data: rows }, { data: wdRows }] = await Promise.all([
-      supabase
-        .from("wallet_ledger")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id),
-      supabase
-        .from("wallet_ledger")
-        .select("id, amount, entry_type, created_at, metadata")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .range(from, to),
+      ledgerCountQuery,
+      ledgerRowsQuery,
       supabase
         .from("withdrawals")
         .select(
@@ -301,10 +325,20 @@ export function WalletView() {
       return;
     }
 
-    setLedger(
+    const visibleRows = filterLedgerRowsForDisplay(
       (rows ?? []).map((r) => ({
         ...r,
+        reference_id: r.reference_id ?? null,
+      })),
+      hiddenWithdrawalIds,
+    );
+    setLedger(
+      visibleRows.map((r) => ({
+        id: r.id,
         amount: Number(r.amount),
+        entry_type: r.entry_type,
+        created_at: r.created_at,
+        metadata: r.metadata as Record<string, unknown> | null,
       })),
     );
 

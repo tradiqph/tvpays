@@ -21,6 +21,11 @@ import {
 } from "@/components/hq/ui";
 import { humanize, manilaDay, php, phpCompact } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
+import {
+  applyHiddenWithdrawalLedgerExclusion,
+  fetchHiddenWithdrawalIds,
+} from "@/lib/wallet-ledger-visibility";
+import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 
 type Profileish = { member_code: string; display_name: string | null; avatar_url: string | null } | null;
 
@@ -29,6 +34,14 @@ async function loadDashboard() {
   const admin = createAdminClient();
   const since14 = t.daysAgoIso(14);
   const since7 = t.daysAgoIso(7);
+  const hiddenWithdrawalIds = await fetchHiddenWithdrawalIds(admin);
+
+  let ledgerQuery = admin
+    .from("wallet_ledger")
+    .select("id, amount, entry_type, bucket, created_at, user_id, profiles(member_code, display_name, avatar_url)")
+    .order("created_at", { ascending: false })
+    .limit(8);
+  ledgerQuery = applyHiddenWithdrawalLedgerExclusion(ledgerQuery, hiddenWithdrawalIds);
 
   const [members, newMembers, signups, deposits, pendingW, processingW, agents, wallets, ledger, queue] =
     await Promise.all([
@@ -36,19 +49,25 @@ async function loadDashboard() {
       admin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since7),
       admin.from("profiles").select("created_at").gte("created_at", since14).limit(20000),
       admin.from("starpago_deposits").select("amount, paid_at").eq("status", "paid").gte("paid_at", since14).limit(20000),
-      admin.from("withdrawals").select("net_amount").eq("status", "pending").limit(5000),
-      admin.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "processing"),
+      admin
+        .from("withdrawals")
+        .select("net_amount")
+        .eq("status", "pending")
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
+        .limit(5000),
+      admin
+        .from("withdrawals")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "processing")
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
       admin.from("agent_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
       admin.from("wallets").select("deposit_balance, withdrawal_balance").limit(50000),
-      admin
-        .from("wallet_ledger")
-        .select("id, amount, entry_type, bucket, created_at, user_id, profiles(member_code, display_name, avatar_url)")
-        .order("created_at", { ascending: false })
-        .limit(8),
+      ledgerQuery,
       admin
         .from("withdrawals")
         .select("id, net_amount, requested_at, user_id, profiles(member_code, display_name, avatar_url)")
         .eq("status", "pending")
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
         .order("requested_at", { ascending: true })
         .limit(5),
     ]);

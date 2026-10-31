@@ -3,6 +3,7 @@ import { manilaViewDate } from "@/lib/drama-access";
 import { daysRemainingUntil, formatDateManila, formatPhp } from "@/lib/format";
 import { getMemberPackages } from "@/lib/member-packages";
 import { DAILY_CHECKIN_PHP } from "@/lib/plans";
+import { applyWithdrawalListVisibility } from "@/lib/withdrawals";
 
 export type MemberNotification = {
   id: string;
@@ -104,13 +105,15 @@ export async function getMemberNotifications(
   }
 
   const since = new Date(now - 14 * 86_400_000).toISOString();
-  const { data: withdrawals } = await admin
-    .from("withdrawals")
-    .select("id, status, net_amount, requested_at, completed_at, failure_reason, refund_status")
-    .eq("user_id", userId)
-    .gte("requested_at", since)
-    .order("requested_at", { ascending: false })
-    .limit(8);
+  const { data: withdrawals } = await applyWithdrawalListVisibility(
+    admin
+      .from("withdrawals")
+      .select("id, status, net_amount, requested_at, completed_at, failure_reason, refund_status")
+      .eq("user_id", userId)
+      .gte("requested_at", since)
+      .order("requested_at", { ascending: false })
+      .limit(8),
+  );
 
   for (const row of withdrawals ?? []) {
     const at = row.completed_at ?? row.requested_at;

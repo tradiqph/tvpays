@@ -6,6 +6,10 @@ import { Card, EmptyState, MemberCell, PageHeader, Pagination, TableSkeleton, ta
 import { FilterSelect } from "@/components/hq/controls";
 import { dateTime, humanize, php } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
+import {
+  applyHiddenWithdrawalLedgerExclusion,
+  fetchHiddenWithdrawalIds,
+} from "@/lib/wallet-ledger-visibility";
 
 const PAGE_SIZE = 40;
 
@@ -50,13 +54,17 @@ async function Ledger({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
 
-  let query = createAdminClient()
+  const admin = createAdminClient();
+  const hiddenWithdrawalIds = await fetchHiddenWithdrawalIds(admin);
+
+  let query = admin
     .from("wallet_ledger")
     .select("id, user_id, amount, bucket, entry_type, reference_id, created_at, profiles(member_code, display_name, avatar_url)", {
       count: "exact",
     })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  query = applyHiddenWithdrawalLedgerExclusion(query, hiddenWithdrawalIds);
   if (params.type && ENTRY_TYPES.includes(params.type)) query = query.eq("entry_type", params.type);
   if (params.bucket && BUCKETS.includes(params.bucket)) query = query.eq("bucket", params.bucket);
   if (params.member && UUID.test(params.member)) query = query.eq("user_id", params.member);

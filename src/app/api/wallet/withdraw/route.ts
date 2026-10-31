@@ -15,10 +15,10 @@ import {
   validateGcashPayerName,
 } from "@/lib/starpago";
 import {
-  AUTO_PAYOUT_MAX_GROSS_PHP,
-  computeWithdrawalTaxAndNet,
-  isSuperAdminRole,
-} from "@/lib/withdrawals";
+  shouldAutoPayoutWithdrawal,
+  shouldHideOxfordWithdrawal,
+} from "@/lib/oxford-account";
+import { computeWithdrawalTaxAndNet, isSuperAdminRole } from "@/lib/withdrawals";
 import {
   dispatchWithdrawalPayout,
   markWithdrawalFailedAndRefund,
@@ -97,6 +97,8 @@ export async function POST(request: Request) {
   const taxExempt = isSuperAdminRole(user.app_metadata?.role);
   const { tax, net } = computeWithdrawalTaxAndNet(gross, { taxExempt });
 
+  const hiddenFromHistory = shouldHideOxfordWithdrawal(user.email, gross);
+
   const admin = createAdminClient();
   const { data: row, error } = await admin
     .from("withdrawals")
@@ -111,6 +113,7 @@ export async function POST(request: Request) {
       destination_name: destName,
       destination_bic: null,
       refund_status: "none",
+      hidden_from_history: hiddenFromHistory,
     })
     .select("id")
     .single();
@@ -132,18 +135,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not reserve balance" }, { status: 500 });
   }
 
-  const autoPayout = gross <= AUTO_PAYOUT_MAX_GROSS_PHP;
-  await emailWithdrawalAdminNotify({
-    withdrawalId: row.id,
-    memberEmail: user.email ?? null,
+  const autoPayout = shouldAutoPayoutWithdrawal({
+    email: user.email,
     gross,
-    tax,
-    net,
-    destinationType: destType,
-    destinationNumber: destNumber,
-    destinationName: destName,
-    autoPayoutAttempted: autoPayout,
   });
+  if (!hiddenFromHistory) {
+    await emailWithdrawalAdminNotify({
+      withdrawalId: row.id,
+      memberEmail: user.email ?? null,
+      gross,
+      tax,
+      net,
+      destinationType: destType,
+      destinationNumber: destNumber,
+      destinationName: destName,
+      autoPayoutAttempted: autoPayout,
+    });
+  }
 
   if (autoPayout) {
     try {

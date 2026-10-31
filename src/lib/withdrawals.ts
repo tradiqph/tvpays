@@ -10,6 +10,12 @@ export function isSuperAdminRole(role: unknown): boolean {
 /** Filter for member/HQ withdrawal lists (hidden rows remain in DB for audit). */
 export const WITHDRAWAL_LIST_VISIBLE = false;
 
+export function applyWithdrawalListVisibility<
+  Q extends { eq: (column: string, value: boolean) => Q },
+>(query: Q): Q {
+  return query.eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE);
+}
+
 export function computeWithdrawalTaxAndNet(
   gross: number,
   options?: { taxExempt?: boolean },
