@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { REFERRAL_RATES, AGENT_DIRECT_SALE_RATE } from "@/lib/plans";
+import { REFERRAL_RATES } from "@/lib/plans";
 import { walletApply } from "@/lib/wallet";
 
 type ReferrerChain = { a?: string; b?: string; c?: string };
@@ -53,27 +53,3 @@ export async function distributeReferralRewards(
   }
 }
 
-export async function maybeAgentDirectSaleBonus(
-  buyerId: string,
-  planPrice: number,
-  referenceId: string,
-): Promise<void> {
-  const chain = await getReferrerChain(buyerId);
-  if (!chain.a) return;
-
-  const admin = createAdminClient();
-  const { data: agent } = await admin
-    .from("profiles")
-    .select("agent_status")
-    .eq("id", chain.a)
-    .maybeSingle();
-
-  if (agent?.agent_status !== "approved") return;
-
-  const bonus = Math.round(planPrice * AGENT_DIRECT_SALE_RATE * 100) / 100;
-  if (bonus <= 0) return;
-
-  await walletApply(chain.a, "withdrawal", bonus, "agent_sale", referenceId, {
-    buyer: buyerId,
-  });
-}

@@ -29,7 +29,9 @@ import {
   PlayCircle,
   Gift,
   X,
+  Lock,
 } from "lucide-react";
+import { AgentReferralGateModal } from "@/components/member/AgentReferralGateModal";
 
 type Profile = {
   member_code: string;
@@ -58,6 +60,7 @@ export function ProfileView() {
   const [tasksDone, setTasksDone] = useState(0);
   const [copied, setCopied] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
+  const [agentGateOpen, setAgentGateOpen] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -99,13 +102,28 @@ export function ProfileView() {
     router.refresh();
   }
 
-  async function applyAgent() {
-    await fetch("/api/agent/apply", { method: "POST" });
-    load();
-  }
-
   const plan = planBySlug(profile?.plan_slug ?? "trial");
   const isAgent = profile?.agent_status === "approved";
+  const referralsUnlocked = isAgent;
+  const canApplyAgent = Boolean(plan?.minForAgent);
+  const agentStatus = profile?.agent_status ?? "none";
+
+  function openReferralsGate() {
+    setAgentGateOpen(true);
+  }
+
+  function handleAgentApplied(status: string) {
+    setProfile((p) => (p ? { ...p, agent_status: status } : p));
+    if (status === "approved") {
+      load();
+    }
+  }
+
+  const referralsMenuSub = referralsUnlocked
+    ? "View your team and referral earnings"
+    : agentStatus === "pending"
+      ? "Waiting for Agent approval"
+      : "Apply as Agent to unlock";
   const badge = isAgent ? "Agent" : "VIP Member";
   const xp = profile?.xp ?? 0;
   const trialDaysLeft = daysRemainingUntil(profile?.trial_ends_at);
@@ -138,11 +156,12 @@ export function ProfileView() {
     { icon: Wallet, tone: "purple", title: "My Earnings", sub: "Income history and rewards", href: "/wallet" },
     { icon: Banknote, tone: "green", title: "Withdrawals", sub: "Withdraw to your bank or e-wallet", href: "/wallet" },
     {
-      icon: Users,
+      icon: referralsUnlocked ? Users : Lock,
       tone: "magenta",
       title: "My Referrals",
-      sub: "View your team and referral earnings",
-      href: "/profile/referrals",
+      sub: referralsMenuSub,
+      href: referralsUnlocked ? "/profile/referrals" : undefined,
+      onClick: referralsUnlocked ? undefined : openReferralsGate,
     },
     {
       icon: PlayCircle,
@@ -358,9 +377,19 @@ export function ProfileView() {
                 }}
               >
                 {s.label === "My Referrals" ? (
-                  <Link href="/profile/referrals" className="block">
-                    {tile}
-                  </Link>
+                  referralsUnlocked ? (
+                    <Link href="/profile/referrals" className="block">
+                      {tile}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openReferralsGate}
+                      className="block w-full text-left"
+                    >
+                      {tile}
+                    </button>
+                  )
                 ) : (
                   tile
                 )}
@@ -368,21 +397,6 @@ export function ProfileView() {
             );
           })}
         </motion.div>
-
-        {plan?.minForAgent && profile?.agent_status === "none" && (
-          <button
-            type="button"
-            onClick={applyAgent}
-            className="mb-3 w-full rounded-xl border border-amber-400/50 bg-gradient-to-b from-amber-700/40 to-amber-950/40 py-2 text-sm font-semibold text-amber-100"
-          >
-            Apply for Agent program
-          </button>
-        )}
-        {profile?.agent_status === "pending" && (
-          <p className="mb-3 text-center text-xs text-amber-300">
-            Agent application pending HQ approval
-          </p>
-        )}
 
         {/* Menu */}
         <motion.ul
@@ -447,7 +461,9 @@ export function ProfileView() {
           </motion.li>
         </motion.ul>
         <p className="mt-4 text-center text-[10px] text-slate-500">
-          Referral code: {profile?.referral_code}
+          {referralsUnlocked
+            ? `Referral code: ${profile?.referral_code}`
+            : "Unlock your referral link by becoming an approved Agent."}
         </p>
       </div>
 
@@ -502,6 +518,14 @@ export function ProfileView() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AgentReferralGateModal
+        open={agentGateOpen}
+        onClose={() => setAgentGateOpen(false)}
+        agentStatus={agentStatus}
+        canApply={canApplyAgent}
+        onApplied={handleAgentApplied}
+      />
     </div>
   );
 }

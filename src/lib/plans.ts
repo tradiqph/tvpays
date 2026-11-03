@@ -189,8 +189,6 @@ export const REFERRAL_LEVELS = [
   { key: "L2" as const, rate: REFERRAL_RATES.b },
   { key: "L3" as const, rate: REFERRAL_RATES.c },
 ] as const;
-export const AGENT_DIRECT_SALE_RATE = 0.1;
-
 export function planBySlug(slug: string): SubscriptionPlan | undefined {
   return SUBSCRIPTION_PLANS.find((p) => p.slug === slug);
 }

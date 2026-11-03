@@ -7,10 +7,7 @@ import {
   type PlanSlug,
 } from "@/lib/plans";
 import { walletApply } from "@/lib/wallet";
-import {
-  distributeReferralRewards,
-  maybeAgentDirectSaleBonus,
-} from "@/lib/referrals";
+import { distributeReferralRewards } from "@/lib/referrals";
 import {
   getEffectivePlanSlug,
   getActiveSubscriptionPlanSlug,
@@ -100,7 +97,6 @@ export async function purchasePlan(userId: string, slug: string) {
     "referral_upgrade",
     purchaseRef,
   );
-  await maybeAgentDirectSaleBonus(userId, chargePhp, purchaseRef);
 
   return { ...plan, chargedPhp: chargePhp };
 }

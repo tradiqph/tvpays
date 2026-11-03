@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { MemberTasksSection } from "@/components/member/MemberTasksSection";
+import { CheckinCalendar } from "@/components/member/CheckinCalendar";
 import type { MemberPackagesPayload } from "@/lib/member-packages";
 import { RewardEarnedOverlay } from "@/components/member/RewardEarnedOverlay";
 import { useRewardEarnedFlash } from "@/hooks/useRewardEarnedFlash";
@@ -12,6 +13,7 @@ export function TaskView() {
   const [data, setData] = useState<MemberPackagesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkinLoading, setCheckinLoading] = useState(false);
+  const [checkinRefresh, setCheckinRefresh] = useState(0);
   const { earnedAmount, flashKey, celebrateEarned } = useRewardEarnedFlash();
 
   const load = useCallback(async () => {
@@ -47,6 +49,7 @@ export function TaskView() {
     const res = await fetch("/api/economy/checkin", { method: "POST" });
     const json = (await res.json().catch(() => ({}))) as { amount?: number };
     setCheckinLoading(false);
+    setCheckinRefresh((n) => n + 1);
     if (res.ok) {
       celebrateEarned(json.amount ?? 0);
       load();
@@ -71,6 +74,12 @@ export function TaskView() {
             My packages
           </Link>
         </div>
+
+        <CheckinCalendar
+          onCheckin={doCheckin}
+          checkinLoading={checkinLoading}
+          refreshKey={checkinRefresh}
+        />
 
         {loading && (
           <p className="text-center text-sm text-slate-500">Loading…</p>

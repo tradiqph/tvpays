@@ -92,7 +92,11 @@ const entryMeta: Record<
   withdrawal_request: { label: "Withdrawal", icon: Trophy, orb: ORBS.orange },
   wallet_transfer_in: { label: "Transfer received", icon: Star, orb: ORBS.blue },
   wallet_transfer_out: { label: "Transfer sent", icon: Star, orb: ORBS.orange },
-  agent_sale: { label: "Agent bonus", icon: UserPlus, orb: ORBS.magenta },
+  agent_sale: {
+    label: "L1 Agent Commission",
+    icon: UserPlus,
+    orb: ORBS.magenta,
+  },
 };
 
 const CARD_STYLES = {
@@ -456,7 +460,12 @@ export function WalletView() {
               typeof row.metadata?.plan_name === "string"
                 ? row.metadata.plan_name
                 : null;
-            const rowLabel = planName ? `${planName} ad` : meta.label;
+            let rowLabel = planName ? `${planName} ad` : meta.label;
+            if (row.entry_type === "referral_upgrade" && refLevel === "L1") {
+              rowLabel = "L1 Agent Commission";
+            }
+            const showRefLevel =
+              refLevel && !(row.entry_type === "referral_upgrade" && refLevel === "L1");
             return (
               <motion.li
                 key={row.id}
@@ -479,7 +488,7 @@ export function WalletView() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-white">
                       {rowLabel}
-                      {refLevel ? (
+                      {showRefLevel ? (
                         <span className="ml-1 text-xs font-medium text-sky-300/80">
                           {refLevel}
                         </span>

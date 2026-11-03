@@ -294,7 +294,8 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
     globalTasks.push({
       id: "agent",
       title: "Apply for Agent program",
-      description: "Unlock referral tools and direct-sale bonuses",
+      description:
+        "Approved Agents get an active referral link and L1–L3 commissions on upgrades",
       progress: 0,
       target: 1,
       done: false,
