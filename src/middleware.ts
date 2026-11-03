@@ -73,6 +73,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (path === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/wallet" : "/login";
+    return withHeaders(NextResponse.redirect(url));
+  }
+
   const isAuthPublic =
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
