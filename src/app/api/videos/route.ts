@@ -15,6 +15,7 @@ export type VideoListItem = {
   ads_fund_display: number;
   published_at: string | null;
   credited_today: boolean;
+  liked: boolean;
 };
 
 export async function GET(request: Request) {
@@ -79,6 +80,24 @@ export async function GET(request: Request) {
 
   const credited = new Set((viewsToday ?? []).map((r) => r.video_id));
 
+  const ids = (rows ?? []).map((v) => v.id);
+  const { data: likeRows } = ids.length
+    ? await supabase
+        .from("video_likes")
+        .select("video_id")
+        .eq("user_id", user.id)
+        .eq("liked", true)
+        .in("video_id", ids)
+    : { data: [] as { video_id: string }[] };
+  const liked = new Set((likeRows ?? []).map((r) => r.video_id));
+
+  const { count: likesRewardedToday } = await supabase
+    .from("video_likes")
+    .select("video_id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("like_date", today)
+    .gt("points_awarded", 0);
+
   const videos: VideoListItem[] = (rows ?? []).map((v) => ({
     id: v.id,
     title: v.title,
@@ -89,6 +108,7 @@ export async function GET(request: Request) {
     ads_fund_display: Number(v.ads_fund_display),
     published_at: v.published_at,
     credited_today: credited.has(v.id),
+    liked: liked.has(v.id),
   }));
 
   const planSlug = await getEffectivePlanSlug(user.id);
@@ -104,6 +124,8 @@ export async function GET(request: Request) {
     forfeitedToday: limits.forfeitedToday,
     forfeitedLimit: limits.forfeitedLimit,
     forfeitedBalance: limits.forfeitedBalance,
+    likesRewardedToday: likesRewardedToday ?? 0,
+    likeCap: plan.adsPerDay,
     filter,
     sort,
     page,

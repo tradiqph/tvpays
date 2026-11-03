@@ -48,10 +48,10 @@ const INTEGRATIONS: Integration[] = [
     vars: ["RESEND_API_KEY", "RESEND_FROM", "WITHDRAWAL_NOTIFY_EMAIL"],
   },
   {
-    name: "MovieGasm",
-    purpose: "Trailer catalog via YouTube RSS",
+    name: "Trailer catalog",
+    purpose: "YouTube trailer sync for Media",
     icon: Film,
-    vars: ["MOVIEGASM_CHANNEL_ID"],
+    vars: ["TRAILER_CHANNEL_ID", "TRAILER_SYNC_HANDLE_URL"],
   },
 ];
 
@@ -60,7 +60,7 @@ async function Integrations() {
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {INTEGRATIONS.map((i) => {
-        const optional = i.name === "MovieGasm";
+        const optional = i.name === "Trailer catalog";
         const missing = i.vars.filter((v) => !process.env[v]);
         const ok = optional || missing.length === 0;
         const Icon = i.icon;
@@ -96,7 +96,7 @@ async function Integrations() {
             )}
             {optional && missing.length > 0 && (
               <p className="mt-2 text-[11px] text-slate-500">
-                Channel ID is resolved from @MovieGasm when unset.
+                Set TRAILER_CHANNEL_ID or TRAILER_SYNC_HANDLE_URL for sync.
               </p>
             )}
           </li>
@@ -107,7 +107,7 @@ async function Integrations() {
 }
 
 export default function SystemPage() {
-  const providers = [{ key: "moviegasm", label: "MovieGasm RSS" }];
+  const providers = [{ key: "trailer_feed", label: "Trailer feed (YouTube RSS)" }];
   return (
     <>
       <PageHeader

@@ -5,11 +5,14 @@ import Link from "next/link";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { MemberTasksSection } from "@/components/member/MemberTasksSection";
 import type { MemberPackagesPayload } from "@/lib/member-packages";
+import { RewardEarnedOverlay } from "@/components/member/RewardEarnedOverlay";
+import { useRewardEarnedFlash } from "@/hooks/useRewardEarnedFlash";
 
 export function TaskView() {
   const [data, setData] = useState<MemberPackagesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkinLoading, setCheckinLoading] = useState(false);
+  const { earnedAmount, flashKey, celebrateEarned } = useRewardEarnedFlash();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,12 +45,21 @@ export function TaskView() {
   async function doCheckin() {
     setCheckinLoading(true);
     const res = await fetch("/api/economy/checkin", { method: "POST" });
+    const json = (await res.json().catch(() => ({}))) as { amount?: number };
     setCheckinLoading(false);
-    if (res.ok) load();
+    if (res.ok) {
+      celebrateEarned(json.amount ?? 0);
+      load();
+    }
   }
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      <RewardEarnedOverlay
+        amount={earnedAmount}
+        flashKey={flashKey}
+        label="Check-in reward"
+      />
       <MemberHeader variant="profile" />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="mb-4 flex items-center justify-between gap-2">

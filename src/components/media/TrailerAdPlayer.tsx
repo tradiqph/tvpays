@@ -2,10 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Eye, Play, Share2, Wallet } from "lucide-react";
+import { Eye, Play, Share2, ThumbsUp, Wallet } from "lucide-react";
 import { formatPhp } from "@/lib/format";
 import { formatViewCount } from "@/lib/youtube-rss";
 import type { VideoListItem } from "@/app/api/videos/route";
+import { RewardEarnedOverlay } from "@/components/member/RewardEarnedOverlay";
+import { useRewardEarnedFlash } from "@/hooks/useRewardEarnedFlash";
+import {
+  LikePointsBurst,
+  type LikeBurst,
+} from "@/components/media/LikePointsBurst";
 
 const WATCH_SECONDS = 10;
 
@@ -31,6 +37,12 @@ type Props = {
     kind?: string;
   }) => void;
   onNotice: (msg: string) => void;
+  liked: boolean;
+  likePending: boolean;
+  likeBurst: LikeBurst | null;
+  onToggleLike: () => void;
+  likesRewardedToday: number;
+  likeCap: number;
 };
 
 export function TrailerAdPlayer({
@@ -45,6 +57,12 @@ export function TrailerAdPlayer({
   forfeitedBalance,
   onCredited,
   onNotice,
+  liked,
+  likePending,
+  likeBurst,
+  onToggleLike,
+  likesRewardedToday,
+  likeCap,
 }: Props) {
   const [watchStarted, setWatchStarted] = useState(false);
   const [countdown, setCountdown] = useState(WATCH_SECONDS);
@@ -55,6 +73,7 @@ export function TrailerAdPlayer({
   );
   const watchStartRef = useRef<number | null>(null);
   const creditedRef = useRef(false);
+  const { earnedAmount, flashKey, celebrateEarned } = useRewardEarnedFlash();
 
   useEffect(() => {
     setWatchStarted(false);
@@ -118,10 +137,11 @@ export function TrailerAdPlayer({
       }
       creditedRef.current = true;
       setCredited(true);
+      const amount = json.amount ?? 0;
       onCredited({
         adsToday: json.adsToday ?? adsToday,
         adsLimit: json.adsLimit ?? adsLimit,
-        amount: json.amount ?? 0,
+        amount,
         regularToday: json.regularToday,
         regularLimit: json.regularLimit,
         forfeitedToday: json.forfeitedToday,
@@ -129,13 +149,7 @@ export function TrailerAdPlayer({
         forfeitedBalance: json.forfeitedBalance,
         kind: json.kind,
       });
-      const label =
-        json.kind === "forfeited" ? "Forfeited catch-up" : "Ad";
-      onNotice(
-        json.amount
-          ? `+${formatPhp(json.amount)} ${label} credited (${json.adsToday ?? "?"}/${json.adsLimit ?? "?"} ads today).`
-          : "Ad credited.",
-      );
+      celebrateEarned(amount);
     } catch {
       onNotice("Network error. Try again.");
     } finally {
@@ -147,6 +161,7 @@ export function TrailerAdPlayer({
     crediting,
     credited,
     onCredited,
+    celebrateEarned,
     onNotice,
     video.id,
   ]);
@@ -168,6 +183,11 @@ export function TrailerAdPlayer({
 
   return (
     <div className="relative z-10 shrink-0 overflow-hidden rounded-2xl border border-sky-500/40 bg-slate-950/90 shadow-[0_0_28px_rgba(0,120,255,0.25)]">
+      <RewardEarnedOverlay
+        amount={earnedAmount}
+        flashKey={flashKey}
+        label="Ad reward"
+      />
       <div
         className="relative w-full bg-black"
         style={{ aspectRatio: "16 / 9", minHeight: "11rem" }}
@@ -235,7 +255,11 @@ export function TrailerAdPlayer({
               onClick={() => void claimReward()}
               className="pointer-events-auto rounded-full border border-sky-400/50 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
-              {countdown > 0 ? `Skip in ${countdown} ›` : crediting ? "…" : "Skip ›"}
+              {countdown > 0
+                ? `Skip in ${countdown} ›`
+                : crediting
+                  ? "…"
+                  : "Skip ›"}
             </button>
           )}
           {watchStarted && (credited || creditedRef.current) && (
@@ -247,7 +271,9 @@ export function TrailerAdPlayer({
       </div>
 
       <div className="space-y-2 p-3">
-        <h2 className="line-clamp-2 text-sm font-bold text-white">{video.title}</h2>
+        <h2 className="line-clamp-2 text-sm font-bold text-white">
+          {video.title}
+        </h2>
         <div className="flex flex-wrap items-center gap-3 text-[11px] text-sky-200/80">
           <span className="rounded bg-sky-950 px-1.5 py-0.5 font-semibold text-sky-300">
             1 Ad
@@ -260,12 +286,36 @@ export function TrailerAdPlayer({
             <Wallet className="h-3.5 w-3.5" />
             Total Ads Fund {formatPhp(video.ads_fund_display)}
           </span>
-          <Share2 className="ml-auto h-4 w-4 text-sky-400/70" />
+          <div className="ml-auto flex items-center gap-3">
+            <span className="relative inline-flex">
+              <LikePointsBurst burst={likeBurst} />
+              <button
+                type="button"
+                aria-pressed={liked}
+                aria-label={liked ? "Unlike trailer" : "Like trailer"}
+                disabled={likePending}
+                onClick={onToggleLike}
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 disabled:opacity-60 ${
+                  liked
+                    ? "border-sky-400 bg-sky-600 text-white"
+                    : "border-sky-700/60 bg-slate-900/60 text-sky-200 hover:border-sky-500"
+                }`}
+              >
+                <ThumbsUp
+                  className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`}
+                />
+                {liked ? "Liked" : "Like +5"}
+              </button>
+            </span>
+            <Share2 className="h-4 w-4 text-sky-400/70" />
+          </div>
         </div>
         <p className="text-xs text-slate-400">
           Plan: <span className="text-white">{planName}</span>
           {" · "}
           Ads {regularToday}/{regularLimit}
+          {" · "}
+          Likes {Math.min(likesRewardedToday, likeCap)}/{likeCap}
           {forfeitedLimit > 0 && (
             <>
               {" · "}

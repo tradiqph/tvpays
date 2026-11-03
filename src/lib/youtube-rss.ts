@@ -1,7 +1,22 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const MOVIEGASM_HANDLE_URL = "https://www.youtube.com/@MovieGasm";
 const RSS_BASE = "https://www.youtube.com/feeds/videos.xml?channel_id=";
+
+function trailerChannelIdFromEnv(): string | undefined {
+  return (
+    process.env.TRAILER_CHANNEL_ID?.trim() ||
+    process.env.MOVIEGASM_CHANNEL_ID?.trim() ||
+    undefined
+  );
+}
+
+function trailerSyncHandleUrlFromEnv(): string | undefined {
+  return (
+    process.env.TRAILER_SYNC_HANDLE_URL?.trim() ||
+    process.env.MOVIEGASM_SYNC_HANDLE_URL?.trim() ||
+    undefined
+  );
+}
 const DEFAULT_SYNC_MAX = 80;
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -245,7 +260,11 @@ export async function fetchAllMovieGasmItems(
     200,
     Math.max(
       15,
-      Number(process.env.MOVIEGASM_SYNC_MAX ?? maxItems) || maxItems,
+      Number(
+        process.env.TRAILER_SYNC_MAX ??
+          process.env.MOVIEGASM_SYNC_MAX ??
+          maxItems,
+      ) || maxItems,
     ),
   );
 
@@ -282,12 +301,17 @@ export async function fetchAllMovieGasmItems(
   return [...merged.values()];
 }
 
-/** Resolve YouTube channel id from @handle page or env override. */
+/** Resolve YouTube channel id from env or configured handle URL. */
 export async function resolveMovieGasmChannelId(): Promise<string> {
-  const fromEnv = process.env.MOVIEGASM_CHANNEL_ID?.trim();
+  const fromEnv = trailerChannelIdFromEnv();
   if (fromEnv) return fromEnv;
 
-  const html = await fetchText(MOVIEGASM_HANDLE_URL);
+  const handleUrl = trailerSyncHandleUrlFromEnv();
+  if (!handleUrl) {
+    throw new Error("trailer_channel_not_configured");
+  }
+
+  const html = await fetchText(handleUrl);
   const channelId =
     html.match(/"channelId":"(UC[^"]+)"/)?.[1] ??
     html.match(/"browseId":"(UC[^"]+)"/)?.[1] ??

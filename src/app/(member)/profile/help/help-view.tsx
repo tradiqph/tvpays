@@ -10,7 +10,7 @@ import { GlossIcon, GlossPanel } from "@/components/member/ProfileGloss";
 const FAQS: { q: string; a: string }[] = [
   {
     q: "How do I earn from ads?",
-    a: "Open Media, pick a MovieGasm trailer, wait 10 seconds (or tap Skip when ready), and your ad reward credits to your wallet. Each trailer counts once per day.",
+    a: "Open Media, pick a trailer, wait 10 seconds (or tap Skip when ready), and your ad reward credits to your wallet. Each trailer counts once per day.",
   },
   {
     q: "How many ads can I watch per day?",

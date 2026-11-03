@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { MemberHeader } from "@/components/member/MemberHeader";
 import { AvatarPicker } from "@/components/member/AvatarPicker";
 import { GlossIcon, GlossPanel, TONES, type Tone } from "@/components/member/ProfileGloss";
@@ -27,6 +27,8 @@ import {
   Check,
   Pencil,
   PlayCircle,
+  Gift,
+  X,
 } from "lucide-react";
 
 type Profile = {
@@ -55,6 +57,7 @@ export function ProfileView() {
   const [referrals, setReferrals] = useState(0);
   const [tasksDone, setTasksDone] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [redeemOpen, setRedeemOpen] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -121,9 +124,17 @@ export function ProfileView() {
     title: string;
     sub: string;
     href?: string;
+    onClick?: () => void;
   }[] = [
     { icon: User, tone: "blue", title: "Account Information", sub: "View and manage your account details", href: "/profile/account" },
     { icon: Crown, tone: "gold", title: "My Packages", sub: "Activated plans & earnings", href: "/packages" },
+    {
+      icon: Gift,
+      tone: "gold",
+      title: "Redeem Ad Points",
+      sub: `${profile?.ads_points ?? 0} points available`,
+      onClick: () => setRedeemOpen(true),
+    },
     { icon: Wallet, tone: "purple", title: "My Earnings", sub: "Income history and rewards", href: "/wallet" },
     { icon: Banknote, tone: "green", title: "Withdrawals", sub: "Withdraw to your bank or e-wallet", href: "/wallet" },
     {
@@ -401,6 +412,14 @@ export function ProfileView() {
                     <Link href={item.href} className={rowClass}>
                       {inner}
                     </Link>
+                  ) : item.onClick ? (
+                    <button
+                      type="button"
+                      onClick={item.onClick}
+                      className={`${rowClass} w-full text-left`}
+                    >
+                      {inner}
+                    </button>
                   ) : (
                     <div className={rowClass}>{inner}</div>
                   )}
@@ -431,6 +450,58 @@ export function ProfileView() {
           Referral code: {profile?.referral_code}
         </p>
       </div>
+
+      <AnimatePresence>
+        {redeemOpen && (
+          <motion.div
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setRedeemOpen(false)}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="redeem-title"
+              className="relative w-full max-w-xs rounded-2xl border border-amber-400/40 bg-gradient-to-b from-slate-900 to-[#020b1f] p-5 text-center shadow-[0_0_40px_rgba(245,158,11,0.25)]"
+              initial={{ scale: 0.9, y: 12 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 12 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setRedeemOpen(false)}
+                className="absolute right-3 top-3 rounded-full p-1 text-slate-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="mx-auto mb-3 flex justify-center">
+                <GlossIcon icon={Gift} tone="gold" />
+              </div>
+              <h2 id="redeem-title" className="text-lg font-bold text-white">
+                Coming Soon
+              </h2>
+              <p className="mt-1 text-sm text-sky-100/75">
+                Redeeming Ad Points will be available soon. Keep watching and
+                liking trailers to collect more points!
+              </p>
+              <p className="mt-3 text-xs text-amber-300">
+                You have {profile?.ads_points ?? 0} Ads Points
+              </p>
+              <button
+                type="button"
+                onClick={() => setRedeemOpen(false)}
+                className="mt-4 w-full rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 py-2.5 text-sm font-bold text-white"
+              >
+                Got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

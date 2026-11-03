@@ -8,6 +8,8 @@ import { TrailerListRow } from "@/components/media/TrailerListRow";
 import type { VideoListItem } from "@/app/api/videos/route";
 import { planBySlug, type PlanSlug } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/client";
+import type { LikeResult } from "@/lib/video-likes";
+import type { LikeBurst } from "@/components/media/LikePointsBurst";
 
 type VisibilityFilter = "all" | "members" | "public";
 type SortOrder = "latest" | "oldest" | "popular";
@@ -47,6 +49,10 @@ export function MediaView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [likesRewardedToday, setLikesRewardedToday] = useState(0);
+  const [likeCap, setLikeCap] = useState(2);
+  const [likePending, setLikePending] = useState<Set<string>>(new Set());
+  const [likeBurst, setLikeBurst] = useState<LikeBurst | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
@@ -109,6 +115,8 @@ export function MediaView() {
         forfeitedToday?: number;
         forfeitedLimit?: number;
         forfeitedBalance?: number;
+        likesRewardedToday?: number;
+        likeCap?: number;
         total?: number;
         hasMore?: boolean;
       };
@@ -125,6 +133,8 @@ export function MediaView() {
       setForfeitedToday(json.forfeitedToday ?? 0);
       setForfeitedLimit(json.forfeitedLimit ?? 0);
       setForfeitedBalance(json.forfeitedBalance ?? 0);
+      setLikesRewardedToday(json.likesRewardedToday ?? 0);
+      if (json.likeCap != null) setLikeCap(json.likeCap);
       setPage(pageNum);
       setVideos((prev) => {
         if (mode === "replace") return list;
@@ -183,6 +193,57 @@ export function MediaView() {
     [videos, selectedId],
   );
 
+  const toggleLike = useCallback(
+    async (videoId: string) => {
+      if (likePending.has(videoId)) return;
+      const prevLiked = videos.find((v) => v.id === videoId)?.liked ?? false;
+      setLikePending((s) => new Set(s).add(videoId));
+      setVideos((prev) =>
+        prev.map((v) => (v.id === videoId ? { ...v, liked: !prevLiked } : v)),
+      );
+      try {
+        const res = await fetch("/api/videos/like", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ video_id: videoId }),
+        });
+        const json = (await res.json()) as Partial<LikeResult> & {
+          error?: string;
+        };
+        if (!res.ok) throw new Error(json.error ?? "Could not like trailer");
+        setVideos((prev) =>
+          prev.map((v) =>
+            v.id === videoId ? { ...v, liked: Boolean(json.liked) } : v,
+          ),
+        );
+        if (json.likes_rewarded_today != null) {
+          setLikesRewardedToday(json.likes_rewarded_today);
+        }
+        if (json.daily_cap != null) setLikeCap(json.daily_cap);
+        if (json.awarded && json.awarded > 0) {
+          const amount = json.awarded;
+          const key = Date.now();
+          setLikeBurst({ videoId, amount, key });
+          setTimeout(() => {
+            setLikeBurst((b) => (b?.key === key ? null : b));
+          }, 1400);
+        }
+      } catch (e) {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === videoId ? { ...v, liked: prevLiked } : v)),
+        );
+        setError(e instanceof Error ? e.message : "Network error");
+      } finally {
+        setLikePending((s) => {
+          const next = new Set(s);
+          next.delete(videoId);
+          return next;
+        });
+      }
+    },
+    [likePending, videos],
+  );
+
   const selectVideo = useCallback((id: string) => {
     setSelectedId(id);
     requestAnimationFrame(() => {
@@ -193,7 +254,7 @@ export function MediaView() {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <MemberHeader />
-      <div className="flex min-h-0 flex-1 flex-col px-4 pb-24 pt-1">
+      <div className="flex min-h-0 flex-1 flex-col px-4 pb-2 pt-1">
         <p className="mb-2 shrink-0 text-center text-xs text-sky-200/80">
           Watch Ads for 10 seconds to credit your points.
         </p>
@@ -254,6 +315,12 @@ export function MediaView() {
                 );
               }}
               onNotice={setNotice}
+              liked={selected.liked}
+              likePending={likePending.has(selected.id)}
+              likeBurst={likeBurst?.videoId === selected.id ? likeBurst : null}
+              onToggleLike={() => void toggleLike(selected.id)}
+              likesRewardedToday={likesRewardedToday}
+              likeCap={likeCap}
             />
           )}
         </div>
@@ -324,47 +391,55 @@ export function MediaView() {
           ))}
         </div>
 
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {loading && videos.length === 0 && (
-            <p className="py-8 text-center text-sm text-slate-400">
-              Loading trailers…
-            </p>
-          )}
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {loading && videos.length === 0 && (
+              <p className="py-8 text-center text-sm text-slate-400">
+                Loading trailers…
+              </p>
+            )}
 
-          {!loading && videos.length === 0 && (
-            <p className="py-8 text-center text-sm text-slate-400">
-              No trailers for this filter. Try All or another sort.
-            </p>
-          )}
+            {!loading && videos.length === 0 && (
+              <p className="py-8 text-center text-sm text-slate-400">
+                No trailers for this filter. Try All or another sort.
+              </p>
+            )}
 
-          <div className="flex flex-col gap-2 pb-2">
-            {videos.map((v) => (
-              <TrailerListRow
-                key={v.id}
-                video={v}
-                selected={v.id === selected?.id}
-                onSelect={() => selectVideo(v.id)}
-              />
-            ))}
+            <div className="flex flex-col gap-2 pb-2">
+              {videos.map((v) => (
+                <TrailerListRow
+                  key={v.id}
+                  video={v}
+                  selected={v.id === selected?.id}
+                  onSelect={() => selectVideo(v.id)}
+                  onToggleLike={() => void toggleLike(v.id)}
+                  likePending={likePending.has(v.id)}
+                  likeBurst={likeBurst?.videoId === v.id ? likeBurst : null}
+                />
+              ))}
+            </div>
+
+            {videos.length > 0 && (
+              <div className="flex flex-col items-center gap-1.5 pb-3 pt-1">
+                {hasMore ? (
+                  <button
+                    type="button"
+                    disabled={loadingMore}
+                    onClick={() => void loadMore()}
+                    className="inline-flex items-center gap-1 rounded-full border border-sky-500/50 bg-sky-900/40 px-4 py-1.5 text-xs font-semibold text-sky-100 transition hover:border-sky-400 hover:bg-sky-800/60 disabled:opacity-50"
+                  >
+                    {loadingMore ? "Loading…" : "Load more"}
+                    {!loadingMore && <ChevronDown className="h-3.5 w-3.5" />}
+                  </button>
+                ) : (
+                  <p className="text-[11px] text-slate-400">All trailers loaded</p>
+                )}
+                <p className="text-[10px] text-sky-200/50">
+                  {videos.length} of {total} trailer{total === 1 ? "" : "s"}
+                </p>
+              </div>
+            )}
           </div>
-
-          {videos.length > 0 && (
-            <p className="py-2 text-center text-[10px] text-sky-200/50">
-              Showing {videos.length} of {total} trailer
-              {total === 1 ? "" : "s"}
-            </p>
-          )}
-
-          {hasMore && (
-            <button
-              type="button"
-              disabled={loadingMore}
-              onClick={() => void loadMore()}
-              className="mb-4 w-full rounded-full border border-sky-500/50 bg-sky-950/60 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-900/80 disabled:opacity-50"
-            >
-              {loadingMore ? "Loading…" : "Show more trailers"}
-            </button>
-          )}
         </div>
       </div>
     </div>

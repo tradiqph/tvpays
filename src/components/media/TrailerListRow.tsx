@@ -5,20 +5,42 @@ import { Eye, MoreVertical, ThumbsUp, Wallet } from "lucide-react";
 import { formatPhp } from "@/lib/format";
 import { formatViewCount } from "@/lib/youtube-rss";
 import type { VideoListItem } from "@/app/api/videos/route";
+import {
+  LikePointsBurst,
+  type LikeBurst,
+} from "@/components/media/LikePointsBurst";
 
 type Props = {
   video: VideoListItem;
   selected: boolean;
   onSelect: () => void;
+  onToggleLike: () => void;
+  likePending: boolean;
+  likeBurst: LikeBurst | null;
 };
 
-export function TrailerListRow({ video, selected, onSelect }: Props) {
+export function TrailerListRow({
+  video,
+  selected,
+  onSelect,
+  onToggleLike,
+  likePending,
+  likeBurst,
+}: Props) {
   const thumb = `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       className={`relative z-10 flex w-full cursor-pointer gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99] ${
         selected
           ? "border-sky-400/90 bg-sky-950/60 ring-1 ring-sky-400/40"
@@ -26,13 +48,7 @@ export function TrailerListRow({ video, selected, onSelect }: Props) {
       }`}
     >
       <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-800">
-        <Image
-          src={thumb}
-          alt=""
-          fill
-          className="object-cover"
-          sizes="112px"
-        />
+        <Image src={thumb} alt="" fill className="object-cover" sizes="112px" />
         {video.duration_label && (
           <span className="absolute bottom-1 right-1 rounded bg-black/75 px-1 text-[10px] text-white">
             {video.duration_label}
@@ -61,10 +77,29 @@ export function TrailerListRow({ video, selected, onSelect }: Props) {
           <span className="text-sky-300/80">1 Ad</span>
         </div>
       </div>
-      <div className="pointer-events-none flex shrink-0 flex-col items-center gap-2 pt-1 text-sky-500/60">
-        <MoreVertical className="h-4 w-4" />
-        <ThumbsUp className="h-4 w-4" />
+      <div className="flex shrink-0 flex-col items-center gap-1 pt-1 text-sky-500/60">
+        <MoreVertical className="pointer-events-none h-4 w-4" />
+        <span className="relative inline-flex">
+          <LikePointsBurst burst={likeBurst} />
+          <button
+            type="button"
+            aria-pressed={video.liked}
+            aria-label={video.liked ? "Unlike trailer" : "Like trailer"}
+            disabled={likePending}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLike();
+            }}
+            className={`-m-1 rounded-full p-1.5 transition active:scale-90 disabled:opacity-60 ${
+              video.liked ? "text-sky-300" : "hover:text-sky-300"
+            }`}
+          >
+            <ThumbsUp
+              className={`h-4 w-4 ${video.liked ? "fill-sky-400/80" : ""}`}
+            />
+          </button>
+        </span>
       </div>
-    </button>
+    </div>
   );
 }

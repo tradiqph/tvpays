@@ -294,6 +294,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      video_likes: {
+        Row: {
+          created_at: string;
+          like_date: string;
+          liked: boolean;
+          points_awarded: number;
+          updated_at: string;
+          user_id: string;
+          video_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          like_date?: string;
+          liked?: boolean;
+          points_awarded?: number;
+          updated_at?: string;
+          user_id: string;
+          video_id: string;
+        };
+        Update: {
+          created_at?: string;
+          like_date?: string;
+          liked?: boolean;
+          points_awarded?: number;
+          updated_at?: string;
+          user_id?: string;
+          video_id?: string;
+        };
+        Relationships: [];
+      };
       videos: {
         Row: {
           ads_fund_display: number;
@@ -466,6 +496,16 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       generate_member_code: { Args: Record<string, never>; Returns: string };
+      toggle_video_like: {
+        Args: {
+          p_daily_cap: number;
+          p_date: string;
+          p_points: number;
+          p_user_id: string;
+          p_video_id: string;
+        };
+        Returns: Json;
+      };
       wallet_apply: {
         Args: {
           p_bucket: Database["public"]["Enums"]["wallet_bucket"];

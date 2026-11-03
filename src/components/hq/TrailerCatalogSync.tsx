@@ -22,7 +22,7 @@ export function TrailerCatalogSync() {
         return;
       }
       setMessage(
-        `Synced ${json.upserted ?? 0} trailers (${json.totalFetched ?? "?"} fetched from MovieGasm).`,
+        `Synced ${json.upserted ?? 0} trailers (${json.totalFetched ?? "?"} fetched from source feed).`,
       );
     } catch {
       setMessage("Network error");
@@ -34,9 +34,8 @@ export function TrailerCatalogSync() {
   return (
     <div className="space-y-2">
       <p className="text-sm text-slate-400">
-        Pull latest trailers from{" "}
-        <span className="text-sky-200">youtube.com/@MovieGasm</span> into the
-        Media catalog.
+        Pull the latest trailers from the configured YouTube source into the Media
+        catalog.
       </p>
       <button
         type="button"
@@ -44,7 +43,7 @@ export function TrailerCatalogSync() {
         onClick={() => void sync()}
         className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
-        {loading ? "Syncing…" : "Sync MovieGasm now"}
+        {loading ? "Syncing…" : "Sync trailer catalog"}
       </button>
       {message && (
         <p className="text-sm text-sky-200/90" role="status">

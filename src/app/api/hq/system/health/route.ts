@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getHqSession } from "@/lib/hq/auth";
 import { fetchAllMovieGasmItems } from "@/lib/youtube-rss";
 
-/** Pings MovieGasm RSS feed (no API key). */
+/** Pings trailer YouTube RSS feed (no API key). */
 export async function POST() {
   const session = await getHqSession();
   if (!session) {
@@ -16,8 +16,8 @@ export async function POST() {
       checkedAt: new Date().toISOString(),
       results: [
         {
-          provider: "moviegasm",
-          label: "MovieGasm (YouTube RSS)",
+          provider: "trailer_feed",
+          label: "Trailer feed (YouTube RSS)",
           ok: items.length > 0,
           items: items.length,
           ms: Date.now() - started,
@@ -30,8 +30,8 @@ export async function POST() {
       checkedAt: new Date().toISOString(),
       results: [
         {
-          provider: "moviegasm",
-          label: "MovieGasm (YouTube RSS)",
+          provider: "trailer_feed",
+          label: "Trailer feed (YouTube RSS)",
           ok: false,
           items: 0,
           ms: Date.now() - started,
