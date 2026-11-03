@@ -34,3 +34,16 @@ export async function listStaff(): Promise<User[]> {
   });
   return staff;
 }
+
+/** Auth user ids with HQ or super_admin role (excluded from member balance rollups). */
+export async function getStaffUserIds(): Promise<Set<string>> {
+  const staff = await listStaff();
+  return new Set(staff.map((u) => u.id));
+}
+
+export function isStaffUserId(
+  userId: string,
+  staffIds: Set<string>,
+): boolean {
+  return staffIds.has(userId);
+}

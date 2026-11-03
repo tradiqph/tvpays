@@ -26,6 +26,7 @@ import {
   fetchHiddenWithdrawalIds,
 } from "@/lib/wallet-ledger-visibility";
 import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
+import { getStaffUserIds } from "@/lib/hq/users";
 
 type Profileish = { member_code: string; display_name: string | null; avatar_url: string | null } | null;
 
@@ -42,6 +43,8 @@ async function loadDashboard() {
     .order("created_at", { ascending: false })
     .limit(8);
   ledgerQuery = applyHiddenWithdrawalLedgerExclusion(ledgerQuery, hiddenWithdrawalIds);
+
+  const staffIdsPromise = getStaffUserIds();
 
   const [members, newMembers, signups, deposits, pendingW, processingW, agents, wallets, ledger, queue] =
     await Promise.all([
@@ -61,7 +64,10 @@ async function loadDashboard() {
         .eq("status", "processing")
         .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
       admin.from("agent_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      admin.from("wallets").select("deposit_balance, withdrawal_balance").limit(50000),
+      admin
+        .from("wallets")
+        .select("user_id, deposit_balance, withdrawal_balance")
+        .limit(50000),
       ledgerQuery,
       admin
         .from("withdrawals")
@@ -89,10 +95,16 @@ async function loadDashboard() {
     .filter((r) => r.paid_at && r.paid_at >= since7)
     .reduce((s, r) => s + Number(r.amount), 0);
   const pendingSum = (pendingW.data ?? []).reduce((s, r) => s + Number(r.net_amount), 0);
-  const held = (wallets.data ?? []).reduce(
-    (s, w) => ({ deposit: s.deposit + Number(w.deposit_balance), withdrawable: s.withdrawable + Number(w.withdrawal_balance) }),
-    { deposit: 0, withdrawable: 0 },
-  );
+  const staffIds = await staffIdsPromise;
+  const held = (wallets.data ?? [])
+    .filter((w) => !staffIds.has(w.user_id))
+    .reduce(
+      (s, w) => ({
+        deposit: s.deposit + Number(w.deposit_balance),
+        withdrawable: s.withdrawable + Number(w.withdrawal_balance),
+      }),
+      { deposit: 0, withdrawable: 0 },
+    );
 
   return {
     members: members.count ?? 0,
@@ -153,7 +165,7 @@ async function Dashboard() {
         <StatCard
           label="Member balances"
           value={phpCompact(d.held.withdrawable)}
-          hint={`Withdrawable · ${phpCompact(d.held.deposit)} deposits`}
+          hint={`Members only · ${phpCompact(d.held.deposit)} deposits`}
           icon={Wallet}
           tone="violet"
           href="/hq/transactions"

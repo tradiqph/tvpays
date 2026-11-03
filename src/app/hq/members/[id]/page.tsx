@@ -93,8 +93,20 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
       {isSelf && <MemberSelfPanel />}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Withdrawable" value={php(w?.withdrawal_balance)} icon={Banknote} tone="emerald" />
-        <StatCard label="Deposit balance" value={php(w?.deposit_balance)} icon={Wallet} tone="sky" />
+        {!isStaff ? (
+          <>
+            <StatCard label="Withdrawable" value={php(w?.withdrawal_balance)} icon={Banknote} tone="emerald" />
+            <StatCard label="Deposit balance" value={php(w?.deposit_balance)} icon={Wallet} tone="sky" />
+          </>
+        ) : (
+          <StatCard
+            label="Wallet"
+            value="—"
+            hint="Staff balances excluded from HQ totals"
+            icon={Wallet}
+            tone="violet"
+          />
+        )}
         <StatCard label="Plan" value={planBySlug(p.plan_slug)?.name ?? p.plan_slug} hint={p.subscription_ends_at ? `Until ${dateTime(p.subscription_ends_at)}` : undefined} icon={CalendarDays} tone="amber" />
         <StatCard
           label="Video access"

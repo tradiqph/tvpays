@@ -8,6 +8,7 @@ import { SUBSCRIPTION_PLANS, planBySlug } from "@/lib/plans";
 import { isAllowedAgentStatus, isAllowedPlanSlug } from "@/lib/security/input";
 import { dateTime, php, safeSearch } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
+import { getStaffUserIds, isStaffUserId } from "@/lib/hq/users";
 
 const PAGE_SIZE = 25;
 
@@ -61,7 +62,10 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
     query = query.eq("agent_status", params.agent);
   }
 
-  const { data, count, error } = await query;
+  const [{ data, count, error }, staffIds] = await Promise.all([
+    query,
+    getStaffUserIds(),
+  ]);
   if (error) return <EmptyState title="Couldn't load members" text={error.message} />;
   const rows = (data ?? []) as unknown as Row[];
   if (!rows.length) return <EmptyState icon={Users} title="No members found" text={q ? "Try a different search." : undefined} />;
@@ -91,8 +95,12 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
                 <td className={table.td}>
                   {r.agent_status !== "none" && <StatusBadge status={r.agent_status} />}
                 </td>
-                <td className={`${table.td} text-right tabular-nums`}>{php(r.wallets?.withdrawal_balance)}</td>
-                <td className={`${table.td} text-right tabular-nums text-slate-400`}>{php(r.wallets?.deposit_balance)}</td>
+                <td className={`${table.td} text-right tabular-nums`}>
+                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets?.withdrawal_balance)}
+                </td>
+                <td className={`${table.td} text-right tabular-nums text-slate-400`}>
+                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets?.deposit_balance)}
+                </td>
                 <td className={`${table.td} text-xs text-slate-400`} title={dateTime(r.created_at)}>
                   {t.relative(r.created_at)}
                 </td>
@@ -114,7 +122,9 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
                 <MemberCell name={r.display_name} code={r.member_code} avatar={r.avatar_url} />
               </span>
               <span className="text-right">
-                <span className="block text-sm font-semibold text-white tabular-nums">{php(r.wallets?.withdrawal_balance)}</span>
+                <span className="block text-sm font-semibold text-white tabular-nums">
+                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets?.withdrawal_balance)}
+                </span>
                 <span className="block text-[11px] text-slate-500">{planBySlug(r.plan_slug)?.name ?? r.plan_slug}</span>
               </span>
               <ChevronRight className="h-4 w-4 text-slate-600" />
