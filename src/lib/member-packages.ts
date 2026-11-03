@@ -8,6 +8,11 @@ import {
 import { getActiveSubscriptionPlanSlug } from "@/lib/membership";
 import { manilaViewDate } from "@/lib/manila-date";
 import { formatPhp } from "@/lib/format";
+import {
+  buildForfeitedCatchUpState,
+  countAdsToday,
+  type ForfeitedCatchUpState,
+} from "@/lib/forfeited-tasks";
 
 const EARNING_ENTRY_TYPES = ["drama_episode", "ad_reward", "daily_checkin"] as const;
 
@@ -66,6 +71,7 @@ export type MemberPackagesPayload = {
   planTasks: PlanPackageTask[];
   episodeTotals: EpisodeTaskTotals;
   globalTasks: PackageTask[];
+  forfeited: ForfeitedCatchUpState;
 };
 
 function sumEarningsInWindow(
@@ -121,16 +127,8 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
 
   const today = manilaViewDate();
 
-  const { count: adsTodayCount, error: adsTodayError } = await admin
-    .from("ad_views")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("view_date", today);
-
-  if (adsTodayError) {
-    console.error("[member-packages] ads today", adsTodayError.message);
-  }
-  const adsToday = adsTodayCount ?? 0;
+  const regularToday = await countAdsToday(userId, today, "regular");
+  const adsToday = regularToday;
 
   const purchaseList = purchases ?? [];
   const packages: ActivatedPackage[] = [];
@@ -304,6 +302,8 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
     });
   }
 
+  const forfeited = await buildForfeitedCatchUpState(userId, taskPlan);
+
   return {
     packages: displayPackages,
     activePlanSlug,
@@ -313,6 +313,7 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
     planTasks,
     episodeTotals,
     globalTasks,
+    forfeited,
   };
 }
 

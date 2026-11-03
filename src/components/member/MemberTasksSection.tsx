@@ -174,6 +174,45 @@ export function MemberTasksSection({ data, onCheckin, checkinLoading }: Props) {
         </>
       )}
 
+      {data.forfeited.visible && (
+        <>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-400/90">
+            Forfeited tasks
+          </p>
+          <GlassCard className="mb-3 p-3">
+            <p className="font-semibold text-white">Missed ad income</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Accumulated from days you did not finish your daily ad cap (Manila
+              time). Catch up with up to 3 extra ads per day after today&apos;s
+              regular ads are complete.
+            </p>
+            <p className="mt-2 text-lg font-black text-amber-200">
+              {formatPhp(data.forfeited.balance)} forfeited
+            </p>
+            {data.forfeited.regularDoneToday ? (
+              <>
+                <p className="mt-1 text-sm text-white">
+                  Catch-up today: {data.forfeited.catchUpProgress}/
+                  {data.forfeited.catchUpTarget}
+                </p>
+                <Link
+                  href="/media"
+                  className="mt-2 inline-block rounded-full bg-amber-600 px-4 py-1.5 text-xs font-semibold text-white"
+                >
+                  Watch catch-up ads
+                </Link>
+              </>
+            ) : (
+              <p className="mt-2 text-[11px] text-sky-100/75">
+                Finish today&apos;s regular ads (
+                {data.forfeited.regularToday}/{data.forfeited.regularLimit})
+                first to unlock catch-up slots.
+              </p>
+            )}
+          </GlassCard>
+        </>
+      )}
+
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         Shared goals
       </p>

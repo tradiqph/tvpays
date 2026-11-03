@@ -20,6 +20,7 @@ export type Database = {
           user_id: string;
           video_id: string;
           view_date: string;
+          view_kind: string;
         };
         Insert: {
           created_at?: string;
@@ -28,6 +29,7 @@ export type Database = {
           user_id: string;
           video_id: string;
           view_date?: string;
+          view_kind?: string;
         };
         Update: {
           created_at?: string;
@@ -36,6 +38,7 @@ export type Database = {
           user_id?: string;
           video_id?: string;
           view_date?: string;
+          view_kind?: string;
         };
         Relationships: [];
       };
@@ -168,6 +171,8 @@ export type Database = {
           display_name: string | null;
           drama_access_ends_at: string | null;
           first_paid_plan_at: string | null;
+          forfeited_balance: number;
+          forfeited_settled_through: string | null;
           id: string;
           level: number;
           member_code: string;
@@ -187,6 +192,8 @@ export type Database = {
           display_name?: string | null;
           drama_access_ends_at?: string | null;
           first_paid_plan_at?: string | null;
+          forfeited_balance?: number;
+          forfeited_settled_through?: string | null;
           id: string;
           level?: number;
           member_code: string;
@@ -206,6 +213,8 @@ export type Database = {
           display_name?: string | null;
           drama_access_ends_at?: string | null;
           first_paid_plan_at?: string | null;
+          forfeited_balance?: number;
+          forfeited_settled_through?: string | null;
           id?: string;
           level?: number;
           member_code?: string;

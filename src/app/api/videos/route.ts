@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { manilaViewDate } from "@/lib/manila-date";
+import { getEffectivePlanSlug } from "@/lib/membership";
+import { planBySlug } from "@/lib/plans";
+import { getAdCreditLimits } from "@/lib/forfeited-tasks";
 
 export type VideoListItem = {
   id: string;
@@ -88,15 +91,19 @@ export async function GET(request: Request) {
     credited_today: credited.has(v.id),
   }));
 
-  const { count: adsToday } = await supabase
-    .from("ad_views")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("view_date", today);
+  const planSlug = await getEffectivePlanSlug(user.id);
+  const plan = planBySlug(planSlug) ?? planBySlug("trial")!;
+  const limits = await getAdCreditLimits(user.id, plan);
 
   return NextResponse.json({
     videos,
-    adsToday: adsToday ?? 0,
+    adsToday: limits.adsToday,
+    adsLimit: limits.adsLimit,
+    regularToday: limits.regularToday,
+    regularLimit: limits.regularLimit,
+    forfeitedToday: limits.forfeitedToday,
+    forfeitedLimit: limits.forfeitedLimit,
+    forfeitedBalance: limits.forfeitedBalance,
     filter,
     sort,
     page,

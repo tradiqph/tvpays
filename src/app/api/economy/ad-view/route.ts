@@ -34,8 +34,16 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "failed";
-    if (msg === "daily_limit") {
-      return NextResponse.json({ error: "Daily ad limit reached" }, { status: 429 });
+    if (msg === "daily_limit" || msg === "forfeited_limit") {
+      return NextResponse.json(
+        {
+          error:
+            msg === "forfeited_limit"
+              ? "No forfeited catch-up ads left today"
+              : "Daily ad limit reached",
+        },
+        { status: 429 },
+      );
     }
     if (msg === "already_viewed") {
       return NextResponse.json({ error: "Already credited for this ad today" }, { status: 409 });

@@ -34,6 +34,11 @@ export function MediaView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adsToday, setAdsToday] = useState(0);
   const [adsLimit, setAdsLimit] = useState(2);
+  const [regularToday, setRegularToday] = useState(0);
+  const [regularLimit, setRegularLimit] = useState(2);
+  const [forfeitedToday, setForfeitedToday] = useState(0);
+  const [forfeitedLimit, setForfeitedLimit] = useState(0);
+  const [forfeitedBalance, setForfeitedBalance] = useState(0);
   const [planName, setPlanName] = useState("Free Trial");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -82,7 +87,7 @@ export function MediaView() {
       new Date(data.trial_ends_at).getTime() > Date.now();
     const effective = paidActive || trialActive ? plan : planBySlug("trial")!;
     setPlanName(effective.name);
-    setAdsLimit(effective.adsPerDay);
+    setRegularLimit(effective.adsPerDay);
   }, []);
 
   const fetchPage = useCallback(
@@ -98,6 +103,12 @@ export function MediaView() {
         error?: string;
         videos?: VideoListItem[];
         adsToday?: number;
+        adsLimit?: number;
+        regularToday?: number;
+        regularLimit?: number;
+        forfeitedToday?: number;
+        forfeitedLimit?: number;
+        forfeitedBalance?: number;
         total?: number;
         hasMore?: boolean;
       };
@@ -108,6 +119,12 @@ export function MediaView() {
       setTotal(json.total ?? list.length);
       setHasMore(json.hasMore ?? false);
       setAdsToday(json.adsToday ?? 0);
+      setAdsLimit(json.adsLimit ?? json.regularLimit ?? 2);
+      setRegularToday(json.regularToday ?? json.adsToday ?? 0);
+      setRegularLimit(json.regularLimit ?? json.adsLimit ?? 2);
+      setForfeitedToday(json.forfeitedToday ?? 0);
+      setForfeitedLimit(json.forfeitedLimit ?? 0);
+      setForfeitedBalance(json.forfeitedBalance ?? 0);
       setPage(pageNum);
       setVideos((prev) => {
         if (mode === "replace") return list;
@@ -207,9 +224,29 @@ export function MediaView() {
               planName={planName}
               adsToday={adsToday}
               adsLimit={adsLimit}
-              onCredited={({ adsToday: t, adsLimit: l }) => {
-                setAdsToday(t);
-                setAdsLimit(l);
+              regularToday={regularToday}
+              regularLimit={regularLimit}
+              forfeitedToday={forfeitedToday}
+              forfeitedLimit={forfeitedLimit}
+              forfeitedBalance={forfeitedBalance}
+              onCredited={(payload) => {
+                setAdsToday(payload.adsToday);
+                setAdsLimit(payload.adsLimit);
+                if (payload.regularToday != null) {
+                  setRegularToday(payload.regularToday);
+                }
+                if (payload.regularLimit != null) {
+                  setRegularLimit(payload.regularLimit);
+                }
+                if (payload.forfeitedToday != null) {
+                  setForfeitedToday(payload.forfeitedToday);
+                }
+                if (payload.forfeitedLimit != null) {
+                  setForfeitedLimit(payload.forfeitedLimit);
+                }
+                if (payload.forfeitedBalance != null) {
+                  setForfeitedBalance(payload.forfeitedBalance);
+                }
                 setVideos((prev) =>
                   prev.map((v) =>
                     v.id === selected.id ? { ...v, credited_today: true } : v,

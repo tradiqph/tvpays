@@ -14,10 +14,21 @@ type Props = {
   planName: string;
   adsToday: number;
   adsLimit: number;
+  regularToday: number;
+  regularLimit: number;
+  forfeitedToday: number;
+  forfeitedLimit: number;
+  forfeitedBalance: number;
   onCredited: (payload: {
     adsToday: number;
     adsLimit: number;
     amount: number;
+    regularToday?: number;
+    regularLimit?: number;
+    forfeitedToday?: number;
+    forfeitedLimit?: number;
+    forfeitedBalance?: number;
+    kind?: string;
   }) => void;
   onNotice: (msg: string) => void;
 };
@@ -27,6 +38,11 @@ export function TrailerAdPlayer({
   planName,
   adsToday,
   adsLimit,
+  regularToday,
+  regularLimit,
+  forfeitedToday,
+  forfeitedLimit,
+  forfeitedBalance,
   onCredited,
   onNotice,
 }: Props) {
@@ -89,6 +105,12 @@ export function TrailerAdPlayer({
         amount?: number;
         adsToday?: number;
         adsLimit?: number;
+        regularToday?: number;
+        regularLimit?: number;
+        forfeitedToday?: number;
+        forfeitedLimit?: number;
+        forfeitedBalance?: number;
+        kind?: string;
       };
       if (!res.ok) {
         onNotice(json.error ?? "Could not credit this ad.");
@@ -100,10 +122,18 @@ export function TrailerAdPlayer({
         adsToday: json.adsToday ?? adsToday,
         adsLimit: json.adsLimit ?? adsLimit,
         amount: json.amount ?? 0,
+        regularToday: json.regularToday,
+        regularLimit: json.regularLimit,
+        forfeitedToday: json.forfeitedToday,
+        forfeitedLimit: json.forfeitedLimit,
+        forfeitedBalance: json.forfeitedBalance,
+        kind: json.kind,
       });
+      const label =
+        json.kind === "forfeited" ? "Forfeited catch-up" : "Ad";
       onNotice(
         json.amount
-          ? `+${formatPhp(json.amount)} credited (${json.adsToday ?? "?"}/${json.adsLimit ?? "?"} ads today).`
+          ? `+${formatPhp(json.amount)} ${label} credited (${json.adsToday ?? "?"}/${json.adsLimit ?? "?"} ads today).`
           : "Ad credited.",
       );
     } catch {
@@ -235,7 +265,16 @@ export function TrailerAdPlayer({
         <p className="text-xs text-slate-400">
           Plan: <span className="text-white">{planName}</span>
           {" · "}
-          Total Ads {adsToday}/{adsLimit}
+          Ads {regularToday}/{regularLimit}
+          {forfeitedLimit > 0 && (
+            <>
+              {" · "}
+              Catch-up {forfeitedToday}/{forfeitedLimit}
+              {forfeitedBalance > 0 && (
+                <> · {formatPhp(forfeitedBalance)} forfeited left</>
+              )}
+            </>
+          )}
         </p>
       </div>
     </div>

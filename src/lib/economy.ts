@@ -15,7 +15,27 @@ import {
   getEffectivePlanSlug,
   getActiveSubscriptionPlanSlug,
 } from "@/lib/membership";
+import {
+  settleForfeitedDays,
+  countAdsToday,
+  forfeitedCatchUpAllowance,
+  getAdCreditLimits,
+  type AdViewKind,
+} from "@/lib/forfeited-tasks";
+import { manilaViewDate } from "@/lib/manila-date";
 export { getEffectivePlanSlug } from "@/lib/membership";
+
+export type AdViewCreditResult = {
+  amount: number;
+  adsToday: number;
+  adsLimit: number;
+  regularToday: number;
+  regularLimit: number;
+  forfeitedToday: number;
+  forfeitedLimit: number;
+  forfeitedBalance: number;
+  kind: AdViewKind;
+};
 
 /** Legacy no-op (stacked drama payouts removed). */
 export async function repairStackedEpisodeRewardsIfNeeded(_userId: string) {
@@ -88,25 +108,41 @@ export async function purchasePlan(userId: string, slug: string) {
 export async function creditAdView(
   userId: string,
   videoId: string,
-): Promise<{ amount: number; adsToday: number; adsLimit: number }> {
+): Promise<AdViewCreditResult> {
   const planSlug = await getEffectivePlanSlug(userId);
   const plan = planBySlug(planSlug)!;
   const reward = adRewardPerView(plan);
 
+  await settleForfeitedDays(userId);
+
   const admin = createAdminClient();
-  const today = new Date().toLocaleDateString("en-CA", {
-    timeZone: "Asia/Manila",
-  });
+  const today = manilaViewDate();
 
-  const { count } = await admin
-    .from("ad_views")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("view_date", today);
+  const regularToday = await countAdsToday(userId, today, "regular");
+  const forfeitedToday = await countAdsToday(userId, today, "forfeited");
 
-  const adsToday = count ?? 0;
-  if (adsToday >= plan.adsPerDay) {
-    throw new Error("daily_limit");
+  const { data: profBal } = await admin
+    .from("profiles")
+    .select("forfeited_balance, ads_points")
+    .eq("id", userId)
+    .single();
+  const forfeitedBalance = Number(profBal?.forfeited_balance ?? 0);
+
+  let kind: AdViewKind;
+  if (regularToday < plan.adsPerDay) {
+    kind = "regular";
+  } else {
+    const allowance = forfeitedCatchUpAllowance(
+      plan,
+      forfeitedBalance,
+      forfeitedToday,
+    );
+    if (allowance <= 0) {
+      throw new Error(
+        forfeitedBalance > 0 ? "forfeited_limit" : "daily_limit",
+      );
+    }
+    kind = "forfeited";
   }
 
   const { error: insertErr } = await admin.from("ad_views").insert({
@@ -114,6 +150,7 @@ export async function creditAdView(
     video_id: videoId,
     view_date: today,
     reward_amount: reward,
+    view_kind: kind,
   });
 
   if (insertErr) {
@@ -123,22 +160,38 @@ export async function creditAdView(
 
   await walletApply(userId, "withdrawal", reward, "ad_reward", videoId, {
     date: today,
+    forfeit_catch_up: kind === "forfeited",
   });
 
-  const { data: prof } = await admin
-    .from("profiles")
-    .select("ads_points")
-    .eq("id", userId)
-    .single();
-  await admin
-    .from("profiles")
-    .update({ ads_points: (prof?.ads_points ?? 0) + 10 })
-    .eq("id", userId);
+  if (kind === "forfeited") {
+    const deduct = Math.min(reward, forfeitedBalance);
+    const newBalance = Math.round((forfeitedBalance - deduct) * 100) / 100;
+    await admin
+      .from("profiles")
+      .update({
+        forfeited_balance: Math.max(0, newBalance),
+        ads_points: (profBal?.ads_points ?? 0) + 10,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+  } else {
+    await admin
+      .from("profiles")
+      .update({ ads_points: (profBal?.ads_points ?? 0) + 10 })
+      .eq("id", userId);
+  }
 
+  const limits = await getAdCreditLimits(userId, plan);
   return {
     amount: reward,
-    adsToday: adsToday + 1,
-    adsLimit: plan.adsPerDay,
+    adsToday: limits.adsToday,
+    adsLimit: limits.adsLimit,
+    regularToday: limits.regularToday,
+    regularLimit: limits.regularLimit,
+    forfeitedToday: limits.forfeitedToday,
+    forfeitedLimit: limits.forfeitedLimit,
+    forfeitedBalance: limits.forfeitedBalance,
+    kind,
   };
 }
 

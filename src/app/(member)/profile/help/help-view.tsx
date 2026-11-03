@@ -17,6 +17,10 @@ const FAQS: { q: string; a: string }[] = [
     a: "Your plan sets the daily ad cap (see Task or Subscriptions). Upgrade to a higher tier to unlock more ads per day.",
   },
   {
+    q: "What are forfeited tasks?",
+    a: "If you miss part or all of your daily ad cap (Manila time), the missed display income adds to your forfeited balance. After you finish today's regular ads, you can do up to 3 catch-up ads per day (fewer if less forfeited amount remains) to earn that back on Media.",
+  },
+  {
     q: "How do I top up my wallet?",
     a: "Go to Wallet, tap Top up, enter the amount and follow the payment steps. Your balance updates once the payment is confirmed.",
   },
