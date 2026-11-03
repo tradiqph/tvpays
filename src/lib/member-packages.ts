@@ -97,7 +97,7 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
   const { data: profile } = await admin
     .from("profiles")
     .select(
-      "plan_slug, subscription_ends_at, trial_ends_at, xp, level, agent_status, created_at",
+      "plan_slug, subscription_ends_at, trial_ends_at, agent_status, created_at",
     )
     .eq("id", userId)
     .single();
@@ -232,8 +232,6 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
     .eq("checkin_date", today)
     .maybeSingle();
 
-  const xp = profile?.xp ?? 0;
-
   const displayPackages = [...packages].reverse();
 
   const activePkg =
@@ -278,15 +276,6 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
       target: 1,
       done: !!checkin,
       action: checkin ? undefined : "checkin",
-    },
-    {
-      id: "level",
-      title: "Level progress",
-      description: `Level ${profile?.level ?? 1} — earn XP from ads and activity`,
-      progress: xp,
-      target: 500,
-      done: xp >= 500,
-      href: "/profile",
     },
   ];
 

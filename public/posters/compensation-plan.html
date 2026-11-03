@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TvPays — Ways to Earn | Compensation Plan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #020b1f;
+        --bg-mid: #0a2263;
+        --sky: #7dd3fc;
+        --sky-dim: rgba(125, 211, 252, 0.75);
+        --gold: #fbbf24;
+        --gold-soft: rgba(251, 191, 36, 0.15);
+        --magenta: #e879f9;
+        --emerald: #6ee7b7;
+        --white: #f8fafc;
+        --border: rgba(125, 211, 252, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Outfit", system-ui, sans-serif;
+        background: #0f172a;
+        color: var(--white);
+        line-height: 1.45;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .poster {
+        width: min(100%, 900px);
+        margin: 0 auto;
+        background: linear-gradient(
+          165deg,
+          #06174d 0%,
+          var(--bg-deep) 35%,
+          #02040a 100%
+        );
+        border: 2px solid var(--border);
+        box-shadow: 0 0 60px rgba(40, 130, 255, 0.25);
+      }
+
+      .header {
+        padding: 2rem 2rem 1.25rem;
+        text-align: center;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(
+          180deg,
+          rgba(22, 82, 214, 0.35) 0%,
+          transparent 100%
+        );
+      }
+
+      .logo-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 72px;
+        margin-bottom: 1rem;
+      }
+
+      .logo-wrap img {
+        max-width: min(280px, 85vw);
+        height: auto;
+        object-fit: contain;
+        filter: drop-shadow(0 8px 24px rgba(0, 80, 200, 0.5));
+      }
+
+      .logo-fallback {
+        display: none;
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        background: linear-gradient(90deg, var(--sky), var(--gold));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .logo-fallback.show {
+        display: block;
+      }
+
+      .tagline {
+        font-size: 0.95rem;
+        color: var(--sky-dim);
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin-top: 0.75rem;
+        font-size: clamp(1.75rem, 5vw, 2.35rem);
+        font-weight: 800;
+        line-height: 1.15;
+        text-shadow: 0 2px 20px rgba(56, 189, 248, 0.35);
+      }
+
+      h1 span {
+        color: var(--gold);
+      }
+
+      .body {
+        padding: 1.5rem 2rem 2rem;
+      }
+
+      .intro {
+        text-align: center;
+        font-size: 0.95rem;
+        color: var(--sky-dim);
+        max-width: 42rem;
+        margin: 0 auto 1.75rem;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+
+      @media (max-width: 640px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+        .body {
+          padding: 1.25rem 1.25rem 1.75rem;
+        }
+        .header {
+          padding: 1.5rem 1.25rem 1rem;
+        }
+      }
+
+      .card {
+        background: rgba(11, 29, 77, 0.65);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.15rem 1.2rem;
+        break-inside: avoid;
+      }
+
+      .card.highlight {
+        border-color: rgba(251, 191, 36, 0.45);
+        background: linear-gradient(
+          135deg,
+          rgba(251, 191, 36, 0.08) 0%,
+          rgba(11, 29, 77, 0.7) 50%
+        );
+      }
+
+      .card.agent {
+        border-color: rgba(232, 121, 249, 0.45);
+        background: linear-gradient(
+          135deg,
+          rgba(232, 121, 249, 0.1) 0%,
+          rgba(11, 29, 77, 0.75) 55%
+        );
+      }
+
+      .card.catchup {
+        border-color: rgba(110, 231, 183, 0.45);
+        background: linear-gradient(
+          135deg,
+          rgba(110, 231, 183, 0.12) 0%,
+          rgba(11, 29, 77, 0.7) 60%
+        );
+      }
+
+      .card-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 0.65rem;
+      }
+
+      .icon {
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .icon svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .card h2 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .card p,
+      .card li {
+        font-size: 0.82rem;
+        color: rgba(248, 250, 252, 0.88);
+      }
+
+      .card ul {
+        margin: 0.5rem 0 0 1.1rem;
+      }
+
+      .card li {
+        margin-bottom: 0.35rem;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.65rem;
+      }
+
+      .pill {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.25rem 0.55rem;
+        border-radius: 999px;
+        background: var(--gold-soft);
+        color: var(--gold);
+        border: 1px solid rgba(251, 191, 36, 0.35);
+      }
+
+      .pill.sky {
+        background: rgba(56, 189, 248, 0.12);
+        color: var(--sky);
+        border-color: rgba(56, 189, 248, 0.35);
+      }
+
+      .pill.green {
+        background: rgba(110, 231, 183, 0.12);
+        color: var(--emerald);
+        border-color: rgba(110, 231, 183, 0.35);
+      }
+
+      .section-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--sky);
+        margin: 1.5rem 0 0.75rem;
+        text-align: center;
+      }
+
+      .full {
+        grid-column: 1 / -1;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.72rem;
+        margin-top: 0.5rem;
+      }
+
+      th,
+      td {
+        padding: 0.45rem 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(125, 211, 252, 0.15);
+      }
+
+      th {
+        color: var(--sky);
+        font-weight: 600;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .rates {
+        display: flex;
+        justify-content: center;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+      }
+
+      .rate {
+        text-align: center;
+      }
+
+      .rate strong {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--magenta);
+      }
+
+      .rate span {
+        font-size: 0.72rem;
+        color: var(--sky-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .footer {
+        padding: 1rem 2rem 1.5rem;
+        border-top: 1px solid var(--border);
+        text-align: center;
+        font-size: 0.68rem;
+        color: rgba(148, 163, 184, 0.9);
+        line-height: 1.5;
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+        .poster {
+          width: 100%;
+          max-width: none;
+          box-shadow: none;
+          border: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <article class="poster">
+      <header class="header">
+        <div class="logo-wrap">
+          <img
+            src="/assets/branding/tvpays-brand.png"
+            alt="TvPays — Watch • Click • Earn"
+            onerror="
+              this.style.display = 'none';
+              document.getElementById('logo-fallback').classList.add('show');
+            "
+          />
+          <div id="logo-fallback" class="logo-fallback">TvPays</div>
+        </div>
+        <p class="tagline">Watch · Click · Earn</p>
+        <h1>Ways to <span>Earn</span><br />Full Compensation Plan</h1>
+      </header>
+
+      <div class="body">
+        <p class="intro">
+          Grow your <strong>withdrawal balance</strong> through daily activity,
+          check-ins, and your network. Fund plans from your
+          <strong>deposit balance</strong> to unlock higher daily ad caps. All
+          limits use <strong>Asia/Manila</strong> time. See
+          <strong>Forfeited tasks &amp; Catch-up</strong> at the bottom of this
+          poster.
+        </p>
+
+        <div class="grid-2">
+          <section class="card highlight full">
+            <div class="card-head">
+              <div class="icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#fbbf24"
+                  stroke-width="2"
+                >
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </div>
+              <div>
+                <h2>1. Trailer ad rewards (primary income)</h2>
+                <p>
+                  Open <strong>Media</strong>, watch a trailer for about
+                  <strong>10 seconds</strong>, then skip to credit your wallet.
+                  Each trailer counts once per day.
+                </p>
+              </div>
+            </div>
+            <ul>
+              <li>
+                Pay per view = plan daily display income ÷ daily ad cap (credits
+                to <strong>withdrawal</strong> wallet).
+              </li>
+              <li>
+                Higher subscription = more ads per day and higher earning
+                potential.
+              </li>
+              <li>
+                <strong>+10 Ads Points</strong> per completed ad (redeem coming
+                soon).
+              </li>
+            </ul>
+            <div class="pill-row">
+              <span class="pill sky">Regular ads first each day</span>
+              <span class="pill sky">Free Trial: 2 ads/day</span>
+              <span class="pill sky">Paid plans: up to 70 ads/day</span>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div class="icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#7dd3fc"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="2" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                  <path d="M9 16l2 2 4-4" />
+                </svg>
+              </div>
+              <div>
+                <h2>2. Daily check-in</h2>
+                <p>
+                  Tap check-in once per Manila day on the <strong>Task</strong>
+                  page.
+                </p>
+              </div>
+            </div>
+            <p style="margin-top: 0.5rem">
+              <strong style="font-size: 1.35rem; color: var(--emerald)"
+                >₱5.00</strong
+              >
+              / day → withdrawal wallet
+            </p>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <div class="icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#fbbf24"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2>3. Ads Points (likes &amp; views)</h2>
+                <p>
+                  <strong>+10</strong> points per ad view ·
+                  <strong>+5</strong> per rewarded trailer like (daily like cap
+                  = your plan’s ad cap).
+                </p>
+              </div>
+            </div>
+            <p>Redeem flow coming soon — keep collecting on Media.</p>
+          </section>
+
+          <section class="card agent full">
+            <div class="card-head">
+              <div class="icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#e879f9"
+                  stroke-width="2"
+                >
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div>
+                <h2>4. Agent program &amp; referral commissions</h2>
+                <p>
+                  <strong>Elite Pro</strong> and above may apply to become an
+                  Agent. After HQ approval, your <strong>referral link goes
+                  live</strong> — new sign-ups must use an approved Agent’s
+                  code.
+                </p>
+              </div>
+            </div>
+            <p style="margin-bottom: 0.35rem">
+              When someone in your network <strong>buys or upgrades a plan</strong>,
+              you earn on the <strong>amount charged</strong> (not deposit
+              top-ups alone):
+            </p>
+            <div class="rates">
+              <div class="rate">
+                <strong>5%</strong>
+                <span>L1 Agent Commission</span>
+              </div>
+              <div class="rate">
+                <strong>3%</strong>
+                <span>L2 Referral Gift</span>
+              </div>
+              <div class="rate">
+                <strong>1%</strong>
+                <span>L3 Referral Gift</span>
+              </div>
+            </div>
+            <p style="margin-top: 0.75rem; font-size: 0.78rem">
+              My Referrals stays locked until you’re approved · Apply from
+              Profile → My Referrals
+            </p>
+          </section>
+
+          <p class="section-title full">Plan tiers &amp; daily ad caps</p>
+
+          <section class="card full">
+            <p style="margin-bottom: 0.5rem; font-size: 0.78rem; color: var(--sky-dim)">
+              Paid plans run <strong>360 days</strong> when activated. Display
+              columns are marketing projections — actual per-ad pay follows the
+              formula above.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>Price</th>
+                  <th>Ads/day</th>
+                  <th>≈ ₱/ad</th>
+                  <th>Display daily*</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Free Trial</td>
+                  <td>₱0</td>
+                  <td>2</td>
+                  <td>₱3.00</td>
+                  <td>₱6</td>
+                </tr>
+                <tr>
+                  <td>Elite</td>
+                  <td>₱2,500</td>
+                  <td>4</td>
+                  <td>₱11.38</td>
+                  <td>₱45.50</td>
+                </tr>
+                <tr>
+                  <td>Elite Pro ★ Agent</td>
+                  <td>₱4,850</td>
+                  <td>8</td>
+                  <td>₱11.03</td>
+                  <td>₱88.20</td>
+                </tr>
+                <tr>
+                  <td>Premium</td>
+                  <td>₱8,950</td>
+                  <td>15</td>
+                  <td>₱10.85</td>
+                  <td>₱162.80</td>
+                </tr>
+                <tr>
+                  <td>Premium Elite</td>
+                  <td>₱13,500</td>
+                  <td>22</td>
+                  <td>₱11.16</td>
+                  <td>₱245.50</td>
+                </tr>
+                <tr>
+                  <td>Executive</td>
+                  <td>₱22,800</td>
+                  <td>30</td>
+                  <td>₱13.82</td>
+                  <td>₱414.60</td>
+                </tr>
+                <tr>
+                  <td>Executive Pro</td>
+                  <td>₱38,500</td>
+                  <td>40</td>
+                  <td>₱17.50</td>
+                  <td>₱700</td>
+                </tr>
+                <tr>
+                  <td>Prestige</td>
+                  <td>₱57,900</td>
+                  <td>50</td>
+                  <td>₱21.06</td>
+                  <td>₱1,053</td>
+                </tr>
+                <tr>
+                  <td>Prestige Elite</td>
+                  <td>₱86,500</td>
+                  <td>60</td>
+                  <td>₱26.22</td>
+                  <td>₱1,573</td>
+                </tr>
+                <tr>
+                  <td>Professional</td>
+                  <td>₱125,000</td>
+                  <td>70</td>
+                  <td>₱32.47</td>
+                  <td>₱2,272.75</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="card full">
+            <div class="card-head">
+              <div class="icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#7dd3fc"
+                  stroke-width="2"
+                >
+                  <rect x="2" y="5" width="20" height="14" rx="2" />
+                  <path d="M2 10h20" />
+                </svg>
+              </div>
+              <div>
+                <h2>Wallet &amp; cash out</h2>
+              </div>
+            </div>
+            <ul>
+              <li>
+                <strong>Top-up</strong> (min ₱500) funds deposit balance for
+                plan purchases — not counted as income.
+              </li>
+              <li>
+                <strong>Withdraw</strong> from earnings: min ₱200, max ₱100,000
+                per request; requires active paid subscription; 10% withholding
+                per app rules.
+              </li>
+              <li>
+                Move funds between deposit ↔ withdrawal buckets anytime (not
+                new income).
+              </li>
+            </ul>
+          </section>
+
+          <p class="section-title full">Bonus earn-back</p>
+
+          <section class="card catchup full">
+            <div class="card-head">
+              <div class="icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#6ee7b7"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M12 3v3M12 18v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M3 12h3M18 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"
+                  />
+                  <circle cx="12" cy="12" r="4" />
+                </svg>
+              </div>
+              <div>
+                <h2>5. Forfeited tasks &amp; Catch-up feature</h2>
+                <p>
+                  <strong>Forfeited tasks:</strong> If you don’t complete your
+                  full daily ad cap (Manila day), the unfinished display income
+                  is added to your <strong>forfeited balance</strong> — nothing
+                  is thrown away; it waits for you in the app.
+                </p>
+              </div>
+            </div>
+            <p style="margin: 0.65rem 0 0.5rem; font-size: 0.85rem">
+              <strong>Catch-up feature:</strong> After you finish
+              <strong>today’s regular ads</strong>, open <strong>Media</strong> and
+              run catch-up trailer ads to withdraw from that saved balance.
+            </p>
+            <ul>
+              <li>
+                Up to <strong>3 catch-up ads per Manila day</strong> (fewer if
+                your forfeited balance is smaller).
+              </li>
+              <li>
+                Same ₱ per view as regular ads; wallet credits like normal ad
+                rewards.
+              </li>
+              <li>
+                Track progress on <strong>Task</strong> and Media — each catch-up
+                also earns <strong>+10 Ads Points</strong>.
+              </li>
+            </ul>
+            <div class="pill-row">
+              <span class="pill green">Forfeited balance = saved earnings</span>
+              <span class="pill green">Catch-up = earn it back on Media</span>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <footer class="footer">
+        *Displayed daily/total figures are projections from the TvPays plan guide,
+        not guaranteed earnings. Forfeited tasks accumulate missed daily ad
+        income; catch-up ads redeem from forfeited balance after regular daily
+        ads are complete. Referral commissions apply to plan purchase charges
+        only. Agent referral codes work for new sign-ups after HQ approval.<br />
+        © TvPays · Compensation plan poster · Generated for members &amp; partners
+      </footer>
+    </article>
+  </body>
+</html>
