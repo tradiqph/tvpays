@@ -29,7 +29,6 @@ export type SubscriptionPlan = {
   dramaBundleDays: number;
   sortOrder: number;
   tierNumber: number | null;
-  minForAgent: boolean;
 };
 
 /** Display projections from the TvPays guide — not guaranteed earnings. */
@@ -46,7 +45,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 0,
     sortOrder: 0,
     tierNumber: null,
-    minForAgent: false,
   },
   {
     slug: "elite",
@@ -60,7 +58,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 7,
     sortOrder: 1,
     tierNumber: 1,
-    minForAgent: false,
   },
   {
     slug: "elite_pro",
@@ -74,7 +71,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 14,
     sortOrder: 2,
     tierNumber: 2,
-    minForAgent: true,
   },
   {
     slug: "premium",
@@ -88,7 +84,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 21,
     sortOrder: 3,
     tierNumber: 3,
-    minForAgent: true,
   },
   {
     slug: "premium_elite",
@@ -102,7 +97,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 30,
     sortOrder: 4,
     tierNumber: 4,
-    minForAgent: true,
   },
   {
     slug: "executive",
@@ -116,7 +110,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 60,
     sortOrder: 5,
     tierNumber: 5,
-    minForAgent: true,
   },
   {
     slug: "executive_pro",
@@ -130,7 +123,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 120,
     sortOrder: 6,
     tierNumber: 6,
-    minForAgent: true,
   },
   {
     slug: "prestige",
@@ -144,7 +136,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 180,
     sortOrder: 7,
     tierNumber: 7,
-    minForAgent: true,
   },
   {
     slug: "prestige_elite",
@@ -158,7 +149,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 240,
     sortOrder: 8,
     tierNumber: 8,
-    minForAgent: true,
   },
   {
     slug: "professional",
@@ -172,7 +162,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     dramaBundleDays: 365,
     sortOrder: 9,
     tierNumber: 9,
-    minForAgent: true,
   },
 ];
 

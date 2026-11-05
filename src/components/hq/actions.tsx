@@ -152,49 +152,6 @@ export function WithdrawalActions({
   );
 }
 
-export function AgentActions({ userId, name }: { userId: string; name: string }) {
-  const { run, loading, error, setError } = useHqAction();
-  const [decision, setDecision] = useState<boolean | null>(null);
-  const close = () => {
-    setDecision(null);
-    setError(null);
-  };
-
-  return (
-    <>
-      <div className="flex gap-1.5">
-        <Button variant="success" onClick={() => setDecision(true)}>
-          <Check className="h-3.5 w-3.5" /> Approve
-        </Button>
-        <Button variant="secondary" onClick={() => setDecision(false)}>
-          <X className="h-3.5 w-3.5" /> Reject
-        </Button>
-      </div>
-      <Modal
-        open={decision !== null}
-        onClose={close}
-        title={decision ? "Approve agent?" : "Reject application?"}
-        tone={decision ? "default" : "danger"}
-      >
-        <p className="text-sm text-slate-300">
-          {name} will be notified by email.
-        </p>
-        <ErrorNote error={error} />
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button
-            variant={decision ? "success" : "danger"}
-            loading={loading}
-            onClick={async () => (await run("/api/hq/agents", { user_id: userId, approve: decision })) && close()}
-          >
-            {decision ? "Approve" : "Reject"}
-          </Button>
-        </div>
-      </Modal>
-    </>
-  );
-}
-
 const PAID_PLANS = SUBSCRIPTION_PLANS.filter(
   (p) => p.pricePhp > 0 && p.slug !== "trial",
 );

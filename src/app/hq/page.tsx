@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   ArrowDownToLine,
   ArrowRight,
-  BadgeCheck,
   Banknote,
   Users,
   UserPlus,
@@ -46,7 +45,7 @@ async function loadDashboard() {
 
   const staffIdsPromise = getStaffUserIds();
 
-  const [members, newMembers, signups, deposits, pendingW, processingW, agents, wallets, ledger, queue] =
+  const [members, newMembers, signups, deposits, pendingW, processingW, wallets, ledger, queue] =
     await Promise.all([
       admin.from("profiles").select("id", { count: "exact", head: true }),
       admin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since7),
@@ -63,7 +62,6 @@ async function loadDashboard() {
         .select("id", { count: "exact", head: true })
         .eq("status", "processing")
         .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
-      admin.from("agent_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
       admin
         .from("wallets")
         .select("user_id, deposit_balance, withdrawal_balance")
@@ -113,7 +111,6 @@ async function loadDashboard() {
     pendingCount: pendingW.data?.length ?? 0,
     pendingSum,
     processing: processingW.count ?? 0,
-    agents: agents.count ?? 0,
     held,
     signupChart: days.map((d) => ({ label: d.label, value: signupBy.get(d.key) ?? 0 })),
     depositChart: days.map((d) => ({ label: d.label, value: depositBy.get(d.key) ?? 0 })),
@@ -192,18 +189,6 @@ async function Dashboard() {
           }
           padded={false}
         >
-          {d.agents > 0 && (
-            <Link
-              href="/hq/agents"
-              className="flex items-center gap-3 border-b border-white/[0.05] bg-amber-400/[0.04] px-4 py-3 text-sm hover:bg-amber-400/[0.08]"
-            >
-              <BadgeCheck className="h-4 w-4 text-amber-300" />
-              <span className="flex-1 text-slate-200">
-                {d.agents} agent application{d.agents === 1 ? "" : "s"} waiting
-              </span>
-              <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
-            </Link>
-          )}
           {d.queue.length === 0 ? (
             <EmptyState icon={Banknote} title="All caught up" text="No withdrawals are waiting for review." />
           ) : (

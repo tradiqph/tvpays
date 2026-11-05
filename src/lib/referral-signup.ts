@@ -3,9 +3,6 @@ import { clampText } from "@/lib/security/input";
 
 export const SIGNUP_REF_LOCK_STORAGE_KEY = "tvpays_signup_ref_lock";
 
-export const REFERRAL_CODE_INACTIVE_MESSAGE =
-  "This referral code is not active yet. Your inviter must be an approved Agent.";
-
 const REFERRAL_CODE_MAX = 32;
 
 export function normalizeReferralCodeInput(raw: string): string {
@@ -20,9 +17,9 @@ export function referralCodeFromSearchParams(
   return normalizeReferralCodeInput(fromUrl);
 }
 
-export type ReferralCodeSignupStatus = "missing" | "inactive" | "valid";
+export type ReferralCodeSignupStatus = "missing" | "valid";
 
-/** Whether a code can be used for new sign-ups (upline must be an approved Agent). */
+/** Whether a code belongs to an existing member (any member may refer). */
 export async function referralCodeSignupStatus(
   code: string,
 ): Promise<ReferralCodeSignupStatus> {
@@ -32,12 +29,11 @@ export async function referralCodeSignupStatus(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("id, agent_status")
+    .select("id")
     .eq("referral_code", normalized)
     .maybeSingle();
 
   if (error || !data?.id) return "missing";
-  if (data.agent_status !== "approved") return "inactive";
   return "valid";
 }
 
@@ -55,7 +51,7 @@ export function signupReferralErrorMessage(err: string): string {
     lower.includes("referral_code_not_active") ||
     lower.includes("referral_code_inactive")
   ) {
-    return REFERRAL_CODE_INACTIVE_MESSAGE;
+    return "That referral code is not valid. Check the code and try again.";
   }
   if (lower.includes("invalid_referral_code")) {
     return "That referral code is not valid. Check the code and try again.";

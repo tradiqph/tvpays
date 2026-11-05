@@ -68,7 +68,6 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
               <h2 className="truncate text-lg font-bold text-white">{p.display_name || "Unnamed member"}</h2>
               <StatusBadge status={suspended ? "suspended" : "active"} />
               {isStaff && <StatusBadge status={staffRole!} label={staffRole === "super_admin" ? "Super admin" : "HQ staff"} />}
-              {p.agent_status !== "none" && <StatusBadge status={p.agent_status} label={`Agent ${p.agent_status}`} />}
             </div>
             <p className="mt-0.5 font-mono text-xs text-slate-400">TVP{p.member_code} · ref {p.referral_code}</p>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">

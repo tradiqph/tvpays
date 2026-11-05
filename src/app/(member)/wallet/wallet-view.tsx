@@ -93,7 +93,7 @@ const entryMeta: Record<
   wallet_transfer_in: { label: "Transfer received", icon: Star, orb: ORBS.blue },
   wallet_transfer_out: { label: "Transfer sent", icon: Star, orb: ORBS.orange },
   agent_sale: {
-    label: "L1 Agent Commission",
+    label: "L1 Referral Commission",
     icon: UserPlus,
     orb: ORBS.magenta,
   },
@@ -462,7 +462,7 @@ export function WalletView() {
                 : null;
             let rowLabel = planName ? `${planName} ad` : meta.label;
             if (row.entry_type === "referral_upgrade" && refLevel === "L1") {
-              rowLabel = "L1 Agent Commission";
+              rowLabel = "L1 Referral Commission";
             }
             const showRefLevel =
               refLevel && !(row.entry_type === "referral_upgrade" && refLevel === "L1");

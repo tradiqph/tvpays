@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowDownToLine,
   ArrowLeftRight,
-  BadgeCheck,
   Banknote,
   LayoutDashboard,
   LogOut,
@@ -38,7 +37,6 @@ type Props = {
   role: "hq" | "super_admin";
   userId: string;
   pendingWithdrawals: number;
-  pendingAgents: number;
 };
 
 function NavLink({
@@ -90,7 +88,6 @@ export function HqShell({
   role,
   userId,
   pendingWithdrawals,
-  pendingAgents,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -107,7 +104,6 @@ export function HqShell({
       items: [
         { href: "/hq/withdrawals", label: "Withdrawals", icon: Banknote, badge: pendingWithdrawals },
         { href: "/hq/deposits", label: "Deposits", icon: ArrowDownToLine },
-        { href: "/hq/agents", label: "Agents", icon: BadgeCheck, badge: pendingAgents },
       ],
     },
     {

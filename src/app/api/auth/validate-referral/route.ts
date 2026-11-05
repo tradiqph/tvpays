@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   normalizeReferralCodeInput,
-  REFERRAL_CODE_INACTIVE_MESSAGE,
   referralCodeSignupStatus,
 } from "@/lib/referral-signup";
 
@@ -20,12 +19,6 @@ export async function POST(request: Request) {
   if (status === "missing") {
     return NextResponse.json(
       { ok: false, error: "Invalid referral code." },
-      { status: 404 },
-    );
-  }
-  if (status === "inactive") {
-    return NextResponse.json(
-      { ok: false, error: REFERRAL_CODE_INACTIVE_MESSAGE },
       { status: 404 },
     );
   }

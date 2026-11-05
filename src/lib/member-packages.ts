@@ -97,7 +97,7 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
   const { data: profile } = await admin
     .from("profiles")
     .select(
-      "plan_slug, subscription_ends_at, trial_ends_at, agent_status, created_at",
+      "plan_slug, subscription_ends_at, trial_ends_at, created_at",
     )
     .eq("id", userId)
     .single();
@@ -291,19 +291,6 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
       action: checkin ? undefined : "checkin",
     },
   ];
-
-  if (effectivePlan.minForAgent && profile?.agent_status === "none") {
-    globalTasks.push({
-      id: "agent",
-      title: "Apply for Agent program",
-      description:
-        "Approved Agents get an active referral link and L1–L3 commissions on upgrades",
-      progress: 0,
-      target: 1,
-      done: false,
-      href: "/profile",
-    });
-  }
 
   const forfeited = await buildForfeitedCatchUpState(userId, taskPlan);
 

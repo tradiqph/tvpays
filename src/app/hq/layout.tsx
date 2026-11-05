@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 async function countPending() {
   try {
     const admin = createAdminClient();
-    const [w, f, a] = await Promise.all([
+    const [w, f] = await Promise.all([
       admin
         .from("withdrawals")
         .select("id", { count: "exact", head: true })
@@ -27,11 +27,10 @@ async function countPending() {
         .select("id", { count: "exact", head: true })
         .eq("status", "frozen")
         .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
-      admin.from("agent_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
     ]);
-    return { withdrawals: (w.count ?? 0) + (f.count ?? 0), agents: a.count ?? 0 };
+    return { withdrawals: (w.count ?? 0) + (f.count ?? 0) };
   } catch {
-    return { withdrawals: 0, agents: 0 };
+    return { withdrawals: 0 };
   }
 }
 
@@ -44,7 +43,6 @@ async function Shell({ children }: { children: React.ReactNode }) {
       role={session.role}
       userId={session.user.id}
       pendingWithdrawals={pending.withdrawals}
-      pendingAgents={pending.agents}
     >
       {children}
     </HqShell>

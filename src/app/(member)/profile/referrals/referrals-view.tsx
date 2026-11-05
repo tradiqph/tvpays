@@ -18,8 +18,6 @@ import { StatTile } from "@/components/member/StatTile";
 import { formatDateManila, formatPhp } from "@/lib/format";
 import { planBySlug } from "@/lib/plans";
 import type { MemberReferralsPayload } from "@/lib/member-referrals";
-import type { AgentReferralGatePayload } from "@/lib/agent-referral-access";
-import { AgentReferralGateModal } from "@/components/member/AgentReferralGateModal";
 
 function CopyButton({
   label,
@@ -54,25 +52,15 @@ function CopyButton({
 
 export function ReferralsView() {
   const [data, setData] = useState<MemberReferralsPayload | null>(null);
-  const [gate, setGate] = useState<AgentReferralGatePayload | null>(null);
-  const [gateOpen, setGateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setGate(null);
     setData(null);
     try {
       const res = await fetch("/api/member/referrals");
       if (res.ok) {
         setData((await res.json()) as MemberReferralsPayload);
-        setGateOpen(false);
-        return;
-      }
-      if (res.status === 403) {
-        const body = (await res.json()) as AgentReferralGatePayload;
-        setGate(body);
-        setGateOpen(true);
       }
     } finally {
       setLoading(false);
@@ -82,13 +70,6 @@ export function ReferralsView() {
   useEffect(() => {
     load();
   }, [load]);
-
-  function handleApplied(status: string) {
-    setGate((g) => (g ? { ...g, agentStatus: status } : g));
-    if (status === "approved") {
-      void load();
-    }
-  }
 
   const rateLine =
     data?.rates
@@ -100,24 +81,8 @@ export function ReferralsView() {
       <MemberHeader variant="profile" />
       <SubPageHeader title="My Referrals" />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-        {loading && !data && !gate ? (
+        {loading && !data ? (
           <p className="py-10 text-center text-sm text-sky-200/70">Loading…</p>
-        ) : gate ? (
-          <GlassPanel className="py-10 text-center">
-            <p className="text-sm font-semibold text-white">
-              Referrals are locked
-            </p>
-            <p className="mt-2 text-xs text-sky-200/70">
-              Become an approved Agent to view your invite link and team.
-            </p>
-            <button
-              type="button"
-              onClick={() => setGateOpen(true)}
-              className="mt-4 rounded-xl border border-fuchsia-400/50 px-4 py-2 text-sm font-semibold text-fuchsia-100"
-            >
-              {gate.agentStatus === "pending" ? "View status" : "Apply for Agent"}
-            </button>
-          </GlassPanel>
         ) : data ? (
           <motion.div
             className="space-y-4"
@@ -258,15 +223,6 @@ export function ReferralsView() {
           </p>
         )}
       </div>
-      {gate ? (
-        <AgentReferralGateModal
-          open={gateOpen}
-          onClose={() => setGateOpen(false)}
-          agentStatus={gate.agentStatus}
-          canApply={gate.canApply}
-          onApplied={handleApplied}
-        />
-      ) : null}
     </div>
   );
 }

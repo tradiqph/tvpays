@@ -37,6 +37,14 @@ const FAQS: { q: string; a: string }[] = [
     a: "Withdrawal requests are reviewed by our team before they are sent to your bank or e-wallet. You can see the status in your wallet history.",
   },
   {
+    q: "Why can't I withdraw?",
+    a: "Withdrawals require an active paid subscription (not trial or expired). Subscribe on Subscriptions, then cash out from Wallet when your plan is active.",
+  },
+  {
+    q: "How do referrals work?",
+    a: "Every member gets a referral code on Profile. Share your link — when someone signs up with your code and buys a plan, you earn L1–L3 commissions on their upgrades.",
+  },
+  {
     q: "I forgot my password.",
     a: "On the sign-in screen tap \"Forgot password?\" and we'll email you a reset link. If you're signed in, you can change it under Profile → Security.",
   },

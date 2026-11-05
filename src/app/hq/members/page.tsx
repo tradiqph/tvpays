@@ -5,14 +5,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, EmptyState, MemberCell, PageHeader, Pagination, StatusBadge, TableSkeleton, table } from "@/components/hq/ui";
 import { FilterSelect, SearchBox } from "@/components/hq/controls";
 import { SUBSCRIPTION_PLANS, planBySlug } from "@/lib/plans";
-import { isAllowedAgentStatus, isAllowedPlanSlug } from "@/lib/security/input";
+import { isAllowedPlanSlug } from "@/lib/security/input";
 import { dateTime, php, safeSearch } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
 import { getStaffUserIds, isStaffUserId } from "@/lib/hq/users";
 
 const PAGE_SIZE = 25;
 
-type Params = { q?: string; plan?: string; agent?: string; page?: string };
+type Params = { q?: string; plan?: string; page?: string };
 
 type Row = {
   id: string;
@@ -20,7 +20,6 @@ type Row = {
   display_name: string | null;
   avatar_url: string | null;
   plan_slug: string;
-  agent_status: string;
   created_at: string;
   wallets: { deposit_balance: number; withdrawal_balance: number } | null;
 };
@@ -29,7 +28,6 @@ function hrefWith(params: Params, page: number) {
   const sp = new URLSearchParams();
   if (params.q) sp.set("q", params.q);
   if (params.plan) sp.set("plan", params.plan);
-  if (params.agent) sp.set("agent", params.agent);
   if (page > 1) sp.set("page", String(page));
   const qs = sp.toString();
   return `/hq/members${qs ? `?${qs}` : ""}`;
@@ -44,7 +42,7 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
   let query = createAdminClient()
     .from("profiles")
     .select(
-      "id, member_code, display_name, avatar_url, plan_slug, agent_status, created_at, wallets(deposit_balance, withdrawal_balance)",
+      "id, member_code, display_name, avatar_url, plan_slug, created_at, wallets(deposit_balance, withdrawal_balance)",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -58,10 +56,6 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
   if (params.plan && isAllowedPlanSlug(params.plan, planSlugs)) {
     query = query.eq("plan_slug", params.plan);
   }
-  if (params.agent && isAllowedAgentStatus(params.agent)) {
-    query = query.eq("agent_status", params.agent);
-  }
-
   const [{ data, count, error }, staffIds] = await Promise.all([
     query,
     getStaffUserIds(),
@@ -78,7 +72,6 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
             <tr>
               <th className={table.th}>Member</th>
               <th className={table.th}>Plan</th>
-              <th className={table.th}>Agent</th>
               <th className={`${table.th} text-right`}>Withdrawable</th>
               <th className={`${table.th} text-right`}>Deposit</th>
               <th className={table.th}>Joined</th>
@@ -92,9 +85,6 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
                   <MemberCell name={r.display_name} code={r.member_code} avatar={r.avatar_url} href={`/hq/members/${r.id}`} />
                 </td>
                 <td className={table.td}>{planBySlug(r.plan_slug)?.name ?? r.plan_slug}</td>
-                <td className={table.td}>
-                  {r.agent_status !== "none" && <StatusBadge status={r.agent_status} />}
-                </td>
                 <td className={`${table.td} text-right tabular-nums`}>
                   {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets?.withdrawal_balance)}
                 </td>
@@ -148,14 +138,6 @@ export default function MembersPage({ searchParams }: { searchParams: Promise<Pa
             param="plan"
             label="All plans"
             options={[...SUBSCRIPTION_PLANS].sort((a, b) => a.sortOrder - b.sortOrder).map((p) => ({ value: p.slug, label: p.name }))}
-          />
-          <FilterSelect
-            param="agent"
-            label="Any agent status"
-            options={[
-              { value: "approved", label: "Agents" },
-              { value: "pending", label: "Agent pending" },
-            ]}
           />
         </Suspense>
       </div>
