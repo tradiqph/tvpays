@@ -7,6 +7,11 @@ import { FilterSelect } from "@/components/hq/controls";
 import { dateTime, humanize, php } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
 import {
+  getOxfordUserId,
+  isOxfordAccountEmail,
+  OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP,
+} from "@/lib/oxford-account";
+import {
   applyHiddenWithdrawalLedgerExclusion,
   fetchHiddenWithdrawalIds,
 } from "@/lib/wallet-ledger-visibility";
@@ -65,9 +70,24 @@ async function Ledger({ searchParams }: { searchParams: Promise<Params> }) {
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   query = applyHiddenWithdrawalLedgerExclusion(query, hiddenWithdrawalIds);
+  const oxfordUserId = await getOxfordUserId(admin);
+  if (oxfordUserId) {
+    const cap = OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP;
+    query = query.or(
+      `user_id.neq.${oxfordUserId},and(user_id.eq.${oxfordUserId},amount.lt.${cap},amount.gt.-${cap})`,
+    );
+  }
   if (params.type && ENTRY_TYPES.includes(params.type)) query = query.eq("entry_type", params.type);
   if (params.bucket && BUCKETS.includes(params.bucket)) query = query.eq("bucket", params.bucket);
-  if (params.member && UUID.test(params.member)) query = query.eq("user_id", params.member);
+  if (params.member && UUID.test(params.member)) {
+    query = query.eq("user_id", params.member);
+    const { data: authRes } = await admin.auth.admin.getUserById(params.member);
+    if (isOxfordAccountEmail(authRes.user?.email)) {
+      query = query
+        .lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP)
+        .gt("amount", -OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+    }
+  }
 
   const { data, count, error } = await query;
   if (error) return <EmptyState title="Couldn't load transactions" text={error.message} />;

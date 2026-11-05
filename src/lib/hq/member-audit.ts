@@ -1,7 +1,17 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isOxfordAccountEmail,
+  OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP,
+  shouldHideOxfordAuditAmount,
+} from "@/lib/oxford-account";
 import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { planBySlug } from "@/lib/plans";
 import { safePostgrestSearch } from "@/lib/security/input";
+import {
+  applyHiddenWithdrawalLedgerExclusion,
+  fetchHiddenWithdrawalIds,
+  filterLedgerRowsForDisplay,
+} from "@/lib/wallet-ledger-visibility";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -52,6 +62,26 @@ export async function fetchMemberAuditSummary(userId: string) {
   const profile = profileRes.data;
   if (!profile) return null;
 
+  const email = authRes.data.user?.email ?? null;
+  const oxford = isOxfordAccountEmail(email);
+  const hiddenWithdrawalIds = await fetchHiddenWithdrawalIds(admin, userId);
+
+  let ledgerTotal = ledgerCount.count ?? 0;
+  if (oxford) {
+    let ledgerCountQuery = admin
+      .from("wallet_ledger")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP)
+      .gt("amount", -OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+    ledgerCountQuery = applyHiddenWithdrawalLedgerExclusion(
+      ledgerCountQuery,
+      hiddenWithdrawalIds,
+    );
+    const { count: filteredLedger } = await ledgerCountQuery;
+    ledgerTotal = filteredLedger ?? 0;
+  }
+
   let upline: { id: string; member_code: string; display_name: string | null } | null =
     null;
   if (uplineRes.data?.referred_by) {
@@ -81,7 +111,7 @@ export async function fetchMemberAuditSummary(userId: string) {
       level: profile.level,
       xp: profile.xp,
     },
-    email: authRes.data.user?.email ?? null,
+    email,
     wallet: walletRes.data
       ? {
           deposit: Number(walletRes.data.deposit_balance),
@@ -91,7 +121,7 @@ export async function fetchMemberAuditSummary(userId: string) {
       : null,
     upline,
     counts: {
-      ledger: ledgerCount.count ?? 0,
+      ledger: ledgerTotal,
       referrals: referralCount.count ?? 0,
     },
   };
@@ -106,7 +136,11 @@ export async function fetchMemberAuditTransactions(
   const lim = clampLimit(limit);
   const off = clampOffset(offset);
 
-  const { data, count } = await admin
+  const { data: authRes } = await admin.auth.admin.getUserById(userId);
+  const email = authRes.user?.email ?? null;
+  const hiddenWithdrawalIds = await fetchHiddenWithdrawalIds(admin, userId);
+
+  let query = admin
     .from("wallet_ledger")
     .select("id, amount, bucket, entry_type, reference_id, metadata, created_at", {
       count: "exact",
@@ -114,12 +148,26 @@ export async function fetchMemberAuditTransactions(
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .range(off, off + lim - 1);
+  query = applyHiddenWithdrawalLedgerExclusion(query, hiddenWithdrawalIds);
+  if (isOxfordAccountEmail(email)) {
+    query = query
+      .lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP)
+      .gt("amount", -OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+  }
+
+  const { data, count } = await query;
+
+  let rows = (data ?? []).map((r) => ({
+    ...r,
+    amount: Number(r.amount),
+  }));
+  rows = filterLedgerRowsForDisplay(rows, hiddenWithdrawalIds);
+  rows = rows.filter(
+    (r) => !shouldHideOxfordAuditAmount(email, r.amount),
+  );
 
   return {
-    rows: (data ?? []).map((r) => ({
-      ...r,
-      amount: Number(r.amount),
-    })),
+    rows,
     total: count ?? 0,
     limit: lim,
     offset: off,
@@ -135,7 +183,10 @@ export async function fetchMemberAuditDeposits(
   const lim = clampLimit(limit);
   const off = clampOffset(offset);
 
-  const { data, count } = await admin
+  const { data: authRes } = await admin.auth.admin.getUserById(userId);
+  const email = authRes.user?.email ?? null;
+
+  let query = admin
     .from("starpago_deposits")
     .select("id, amount, status, pay_method, created_at, paid_at", {
       count: "exact",
@@ -143,9 +194,18 @@ export async function fetchMemberAuditDeposits(
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .range(off, off + lim - 1);
+  if (isOxfordAccountEmail(email)) {
+    query = query.lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+  }
+
+  const { data, count } = await query;
+
+  const rows = (data ?? [])
+    .map((r) => ({ ...r, amount: Number(r.amount) }))
+    .filter((r) => !shouldHideOxfordAuditAmount(email, r.amount));
 
   return {
-    rows: (data ?? []).map((r) => ({ ...r, amount: Number(r.amount) })),
+    rows,
     total: count ?? 0,
     limit: lim,
     offset: off,

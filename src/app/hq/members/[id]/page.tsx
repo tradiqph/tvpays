@@ -8,8 +8,13 @@ import { MemberSelfPanel } from "@/components/hq/MemberSelfPanel";
 import { getHqSession } from "@/lib/hq/auth";
 import { planBySlug } from "@/lib/plans";
 import { dateTime, humanize, php } from "@/lib/hq/format";
+import { shouldHideOxfordAuditAmount } from "@/lib/oxford-account";
 import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { getHqTimeContext } from "@/lib/hq/now";
+import {
+  fetchHiddenWithdrawalIds,
+  filterLedgerRowsForDisplay,
+} from "@/lib/wallet-ledger-visibility";
 
 async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
   const t = await getHqTimeContext();
@@ -21,7 +26,7 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
     admin.from("profiles").select("*").eq("id", id).maybeSingle(),
     admin.from("wallets").select("deposit_balance, spending_balance, withdrawal_balance").eq("user_id", id).maybeSingle(),
     admin.auth.admin.getUserById(id),
-    admin.from("wallet_ledger").select("id, amount, bucket, entry_type, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(15),
+    admin.from("wallet_ledger").select("id, amount, bucket, entry_type, reference_id, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(15),
     admin.from("withdrawals").select("id, net_amount, status, destination_type, requested_at").eq("user_id", id).eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE).order("requested_at", { ascending: false }).limit(8),
     admin.from("starpago_deposits").select("id, amount, status, pay_method, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(8),
     admin.from("profiles").select("id", { count: "exact", head: true }).eq("referred_by", id),
@@ -38,6 +43,15 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
   }
 
   const authUser = authRes.data.user;
+  const memberEmail = authUser?.email ?? null;
+  const hiddenWithdrawalIds = await fetchHiddenWithdrawalIds(admin, id);
+  const ledgerPreview = filterLedgerRowsForDisplay(
+    ledgerRes.data ?? [],
+    hiddenWithdrawalIds,
+  ).filter((l) => !shouldHideOxfordAuditAmount(memberEmail, Number(l.amount)));
+  const depositPreview = (dRes.data ?? []).filter(
+    (d) => !shouldHideOxfordAuditAmount(memberEmail, Number(d.amount)),
+  );
   const bannedUntil = authUser?.banned_until ? new Date(authUser.banned_until) : null;
   const suspended = Boolean(bannedUntil && bannedUntil.getTime() > t.now);
   const staffRole = authUser?.app_metadata?.role as string | undefined;
@@ -118,11 +132,11 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card title="Wallet ledger" padded={false} action={<Link href={`/hq/transactions?member=${id}`} className="text-xs text-sky-300">View all</Link>}>
-          {(ledgerRes.data ?? []).length === 0 ? (
+          {ledgerPreview.length === 0 ? (
             <EmptyState icon={Wallet} title="No transactions" />
           ) : (
             <ul className="divide-y divide-white/[0.04]">
-              {ledgerRes.data!.map((l) => {
+              {ledgerPreview.map((l) => {
                 const amt = Number(l.amount);
                 return (
                   <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
@@ -159,11 +173,11 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
             )}
           </Card>
           <Card title="Deposits" padded={false}>
-            {(dRes.data ?? []).length === 0 ? (
+            {depositPreview.length === 0 ? (
               <EmptyState icon={ArrowDownToLine} title="No deposits" />
             ) : (
               <ul className="divide-y divide-white/[0.04]">
-                {dRes.data!.map((r) => (
+                {depositPreview.map((r) => (
                   <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                     <span>
                       <span className="block font-semibold text-white tabular-nums">{php(r.amount)}</span>
