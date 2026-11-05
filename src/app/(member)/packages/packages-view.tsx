@@ -188,11 +188,11 @@ export function PackagesView() {
 
             <section>
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-sky-200/90">
-                Activated packages
+                Your plan
               </h2>
               {data.packages.length === 0 ? (
                 <GlassCard className="p-4 text-center text-sm text-slate-400">
-                  No paid packages yet.{" "}
+                  No active plan yet.{" "}
                   <Link href="/subscriptions" className="text-sky-300 underline">
                     Browse plans
                   </Link>

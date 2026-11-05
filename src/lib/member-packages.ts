@@ -232,12 +232,25 @@ export async function getMemberPackages(userId: string): Promise<MemberPackagesP
     .eq("checkin_date", today)
     .maybeSingle();
 
-  const displayPackages = [...packages].reverse();
+  /** Single card: active plan, or latest purchase / trial (no upgrade history list). */
+  let currentPackage: ActivatedPackage | null = null;
+  if (activePlanSlug) {
+    currentPackage =
+      packages.find(
+        (p) => p.slug === activePlanSlug && p.status === "active",
+      ) ?? null;
+  }
+  if (!currentPackage) {
+    currentPackage = packages.find((p) => p.status === "active") ?? null;
+  }
+  if (!currentPackage) {
+    const paid = packages.filter((p) => p.slug !== "trial");
+    currentPackage =
+      paid.find((p) => p.slug === effectiveSlug) ?? paid.at(-1) ?? null;
+  }
+  const displayPackages = currentPackage ? [currentPackage] : [];
 
-  const activePkg =
-    displayPackages.find((p) => p.status === "active") ??
-    displayPackages[0] ??
-    null;
+  const activePkg = currentPackage;
   const taskPlanSlug = (activePlanSlug ?? effectiveSlug) as PlanSlug;
   const taskPlan = planBySlug(taskPlanSlug) ?? effectivePlan;
   const adTarget = taskPlan.adsPerDay;
