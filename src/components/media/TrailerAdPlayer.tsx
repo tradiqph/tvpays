@@ -1,19 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { Eye, Play, Share2, ThumbsUp, Wallet } from "lucide-react";
+import { Eye, Wallet } from "lucide-react";
 import { formatPhp } from "@/lib/format";
 import { formatViewCount } from "@/lib/youtube-rss";
 import type { VideoListItem } from "@/app/api/videos/route";
 import { RewardEarnedOverlay } from "@/components/member/RewardEarnedOverlay";
 import { useRewardEarnedFlash } from "@/hooks/useRewardEarnedFlash";
 import {
-  LikePointsBurst,
-  type LikeBurst,
-} from "@/components/media/LikePointsBurst";
-
-const WATCH_SECONDS = 10;
+  TRAILER_WATCH_SECONDS,
+  TvPaysTrailerPlayer,
+} from "@/components/media/TvPaysTrailerPlayer";
 
 type Props = {
   video: VideoListItem;
@@ -37,10 +34,6 @@ type Props = {
     kind?: string;
   }) => void;
   onNotice: (msg: string) => void;
-  liked: boolean;
-  likePending: boolean;
-  likeBurst: LikeBurst | null;
-  onToggleLike: () => void;
   likesRewardedToday: number;
   likeCap: number;
 };
@@ -57,17 +50,14 @@ export function TrailerAdPlayer({
   forfeitedBalance,
   onCredited,
   onNotice,
-  liked,
-  likePending,
-  likeBurst,
-  onToggleLike,
   likesRewardedToday,
   likeCap,
 }: Props) {
   const [watchStarted, setWatchStarted] = useState(false);
-  const [countdown, setCountdown] = useState(WATCH_SECONDS);
+  const [countdown, setCountdown] = useState(TRAILER_WATCH_SECONDS);
   const [crediting, setCrediting] = useState(false);
   const [credited, setCredited] = useState(video.credited_today);
+  const [controlsUnlocked, setControlsUnlocked] = useState(video.credited_today);
   const [posterSrc, setPosterSrc] = useState(
     `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`,
   );
@@ -77,19 +67,21 @@ export function TrailerAdPlayer({
 
   useEffect(() => {
     setWatchStarted(false);
-    setCountdown(WATCH_SECONDS);
+    setCountdown(TRAILER_WATCH_SECONDS);
     watchStartRef.current = null;
     setCredited(video.credited_today);
     creditedRef.current = video.credited_today;
+    setControlsUnlocked(video.credited_today);
     setPosterSrc(
       `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`,
     );
-  }, [video.id, video.youtube_id]);
+  }, [video.id, video.youtube_id, video.credited_today]);
 
   useEffect(() => {
     if (video.credited_today) {
       setCredited(true);
       creditedRef.current = true;
+      setControlsUnlocked(true);
     }
   }, [video.credited_today, video.id]);
 
@@ -107,7 +99,7 @@ export function TrailerAdPlayer({
     const elapsed = watchStartRef.current
       ? Math.floor((Date.now() - watchStartRef.current) / 1000)
       : 0;
-    if (elapsed < WATCH_SECONDS) return;
+    if (elapsed < TRAILER_WATCH_SECONDS) return;
 
     setCrediting(true);
     try {
@@ -137,6 +129,7 @@ export function TrailerAdPlayer({
       }
       creditedRef.current = true;
       setCredited(true);
+      setControlsUnlocked(true);
       const amount = json.amount ?? 0;
       onCredited({
         adsToday: json.adsToday ?? adsToday,
@@ -174,101 +167,40 @@ export function TrailerAdPlayer({
 
   function startWatch() {
     setWatchStarted(true);
-    if (credited || creditedRef.current) return;
+    if (credited || creditedRef.current) {
+      setControlsUnlocked(true);
+      return;
+    }
     watchStartRef.current = Date.now();
-    setCountdown(WATCH_SECONDS);
+    setCountdown(TRAILER_WATCH_SECONDS);
   }
 
-  const embedSrc = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(video.youtube_id)}?rel=0&modestbranding=1&autoplay=1`;
+  const youtubeWatchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(video.youtube_id)}`;
 
   return (
-    <div className="relative z-10 shrink-0 overflow-hidden rounded-2xl border border-sky-500/40 bg-slate-950/90 shadow-[0_0_28px_rgba(0,120,255,0.25)]">
+    <div className="relative z-10 shrink-0 overflow-hidden rounded-b-2xl border border-x-0 border-t-0 border-sky-500/40 bg-slate-950/90 shadow-[0_0_28px_rgba(0,120,255,0.25)]">
       <RewardEarnedOverlay
         amount={earnedAmount}
         flashKey={flashKey}
         label="Ad reward"
       />
-      <div
-        className="relative w-full bg-black"
-        style={{ aspectRatio: "16 / 9", minHeight: "11rem" }}
-      >
-        {watchStarted ? (
-          <iframe
-            title={video.title}
-            src={embedSrc}
-            className="absolute inset-0 h-full w-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        ) : (
-          <>
-            <Image
-              src={posterSrc}
-              alt={video.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 480px) 100vw, 400px"
-              priority
-              onError={() =>
-                setPosterSrc(
-                  `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`,
-                )
-              }
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
-            <button
-              type="button"
-              onClick={startWatch}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-              aria-label="Start watching this trailer"
-            >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600/95 shadow-[0_0_24px_rgba(220,38,38,0.65)] ring-4 ring-white/30">
-                <Play className="ml-1 h-8 w-8 fill-white text-white" />
-              </span>
-              <span className="rounded-full bg-black/60 px-4 py-1.5 text-xs font-semibold text-white">
-                {credited || creditedRef.current
-                  ? "Tap to continue watching"
-                  : "Tap to watch · 10s to earn"}
-              </span>
-            </button>
-            {(credited || creditedRef.current) && (
-              <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-emerald-600/90 px-3 py-1.5 text-xs font-semibold text-white">
-                Ad credited today
-              </span>
-            )}
-          </>
-        )}
-
-        {watchStarted && !credited && countdown > 0 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-3 pb-12 pt-8">
-            <p className="text-center text-xs text-sky-100/90">
-              Watch Ads for {WATCH_SECONDS} seconds to credit your points.
-            </p>
-          </div>
-        )}
-
-        <div className="pointer-events-none absolute bottom-3 right-3 z-20 flex items-center gap-2">
-          {watchStarted && !credited && !creditedRef.current && (
-            <button
-              type="button"
-              disabled={countdown > 0 || crediting}
-              onClick={() => void claimReward()}
-              className="pointer-events-auto rounded-full border border-sky-400/50 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              {countdown > 0
-                ? `Skip in ${countdown} ›`
-                : crediting
-                  ? "…"
-                  : "Skip ›"}
-            </button>
-          )}
-          {watchStarted && (credited || creditedRef.current) && (
-            <span className="rounded-full bg-emerald-600/90 px-3 py-1.5 text-xs font-semibold text-white">
-              Ad credited today
-            </span>
-          )}
-        </div>
-      </div>
+      <TvPaysTrailerPlayer
+        youtubeId={video.youtube_id}
+        title={video.title}
+        posterSrc={posterSrc}
+        onPosterError={() =>
+          setPosterSrc(
+            `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`,
+          )
+        }
+        watchStarted={watchStarted}
+        onStartWatch={startWatch}
+        credited={credited || creditedRef.current}
+        crediting={crediting}
+        countdown={countdown}
+        onSkip={() => void claimReward()}
+        controlsUnlocked={controlsUnlocked}
+      />
 
       <div className="space-y-2 p-3">
         <h2 className="line-clamp-2 text-sm font-bold text-white">
@@ -286,29 +218,14 @@ export function TrailerAdPlayer({
             <Wallet className="h-3.5 w-3.5" />
             Total Ads Fund {formatPhp(video.ads_fund_display)}
           </span>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="relative inline-flex">
-              <LikePointsBurst burst={likeBurst} />
-              <button
-                type="button"
-                aria-pressed={liked}
-                aria-label={liked ? "Unlike trailer" : "Like trailer"}
-                disabled={likePending}
-                onClick={onToggleLike}
-                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 disabled:opacity-60 ${
-                  liked
-                    ? "border-sky-400 bg-sky-600 text-white"
-                    : "border-sky-700/60 bg-slate-900/60 text-sky-200 hover:border-sky-500"
-                }`}
-              >
-                <ThumbsUp
-                  className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`}
-                />
-                {liked ? "Liked" : "Like +5"}
-              </button>
-            </span>
-            <Share2 className="h-4 w-4 text-sky-400/70" />
-          </div>
+          <a
+            href={youtubeWatchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-[10px] font-medium text-sky-400/90 underline-offset-2 hover:text-sky-300 hover:underline"
+          >
+            Open on YouTube
+          </a>
         </div>
         <p className="text-xs text-slate-400">
           Plan: <span className="text-white">{planName}</span>

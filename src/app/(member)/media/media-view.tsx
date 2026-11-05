@@ -271,11 +271,11 @@ export function MediaView() {
           </p>
         )}
 
-        <div ref={heroRef} className="mb-3 shrink-0">
+        <div ref={heroRef} className="-mx-4 mb-3 shrink-0">
           {loading && !selected && (
             <div
-              className="animate-pulse rounded-2xl border border-sky-800/40 bg-slate-900/60"
-              style={{ aspectRatio: "16 / 9", minHeight: "11rem" }}
+              className="animate-pulse border-y border-sky-800/40 bg-slate-900/60"
+              style={{ aspectRatio: "16 / 9", minHeight: "15.5rem" }}
             />
           )}
           {selected && (
@@ -315,10 +315,6 @@ export function MediaView() {
                 );
               }}
               onNotice={setNotice}
-              liked={selected.liked}
-              likePending={likePending.has(selected.id)}
-              likeBurst={likeBurst?.videoId === selected.id ? likeBurst : null}
-              onToggleLike={() => void toggleLike(selected.id)}
               likesRewardedToday={likesRewardedToday}
               likeCap={likeCap}
             />
