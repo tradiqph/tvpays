@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/member/BottomNav";
 import { ImmersiveWatchProvider } from "@/components/member/ImmersiveWatchContext";
 import { MemberMotionConfig } from "@/components/member/MemberMotionConfig";
 import { TabTransition } from "@/components/member/TabTransition";
+import { MemberChrome } from "@/components/member/MemberChrome";
 
 export default function MemberLayout({
   children,
@@ -17,6 +18,7 @@ export default function MemberLayout({
             <TabTransition>{children}</TabTransition>
           </div>
           <BottomNav />
+          <MemberChrome />
         </MemberMotionConfig>
       </ImmersiveWatchProvider>
     </PhoneFrame>

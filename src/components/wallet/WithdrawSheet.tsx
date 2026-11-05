@@ -14,6 +14,7 @@ import {
   normalizePhMobile,
   validateGcashPayerName,
 } from "@/lib/starpago";
+import { WITHDRAWAL_TAX_RATE } from "@/lib/plans";
 
 type Props = {
   open: boolean;
@@ -113,7 +114,10 @@ export function WithdrawSheet({
         </div>
         <p className="mb-2 text-xs text-slate-400">
           Available: ₱{maxAmount.toFixed(2)} •{" "}
-          {taxExempt ? "no tax" : "10% tax"} • min ₱200
+          {taxExempt
+            ? "no tax"
+            : `${Math.round(WITHDRAWAL_TAX_RATE * 100)}% tax`}{" "}
+          • min ₱200
         </p>
         <input
           type="number"

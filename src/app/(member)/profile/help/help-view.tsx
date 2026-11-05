@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Mail, MessageCircleQuestion } from "lucide-react";
+import { ChevronDown, Mail, MessageCircleQuestion, Send } from "lucide-react";
 import { SubPageHeader } from "@/components/member/SubPageHeader";
 import { GlossIcon, GlossPanel } from "@/components/member/ProfileGloss";
+import { TELEGRAM_OFFICIAL_GROUP_URL } from "@/lib/community";
 
 // Edit these to match your policies.
 const FAQS: { q: string; a: string }[] = [
@@ -35,6 +36,10 @@ const FAQS: { q: string; a: string }[] = [
   {
     q: "How do I change my display name?",
     a: "Go to Profile → Account Information, edit your display name and tap Save.",
+  },
+  {
+    q: "How do I join the official group?",
+    a: "Tap Join official Telegram group below or Profile → Official Group. You'll open our community chat on Telegram for updates and support from the team.",
   },
 ];
 
@@ -94,8 +99,28 @@ export function HelpView() {
           })}
         </ul>
 
+        <GlossPanel className="p-4 text-center">
+          <p className="text-sm font-bold text-white">Official Telegram group</p>
+          <p className="mt-0.5 text-xs text-sky-100/70">
+            News, guides, and community support from TvPays.
+          </p>
+          <a
+            href={TELEGRAM_OFFICIAL_GROUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-2 rounded-full border border-sky-200/60 bg-gradient-to-b from-[#4fb4ff] to-[#1560e8] px-5 py-2.5 text-sm font-bold text-white"
+            style={{
+              boxShadow:
+                "0 0 14px rgba(56,160,255,0.5), inset 0 1px 0 rgba(255,255,255,0.5)",
+            }}
+          >
+            <Send className="h-4 w-4" />
+            Join official Telegram group
+          </a>
+        </GlossPanel>
+
         {SUPPORT_EMAIL && (
-          <GlossPanel className="p-4 text-center">
+          <GlossPanel className="mt-3 p-4 text-center">
             <p className="text-sm font-bold text-white">Still need help?</p>
             <p className="mt-0.5 text-xs text-sky-100/70">
               Email us and include your Member ID.
@@ -103,7 +128,10 @@ export function HelpView() {
             <a
               href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("TvPays support")}`}
               className="mt-3 inline-flex items-center gap-2 rounded-full border border-sky-200/60 bg-gradient-to-b from-[#4fb4ff] to-[#1560e8] px-5 py-2.5 text-sm font-bold text-white"
-              style={{ boxShadow: "0 0 14px rgba(56,160,255,0.5), inset 0 1px 0 rgba(255,255,255,0.5)" }}
+              style={{
+                boxShadow:
+                  "0 0 14px rgba(56,160,255,0.5), inset 0 1px 0 rgba(255,255,255,0.5)",
+              }}
             >
               <Mail className="h-4 w-4" />
               Contact support

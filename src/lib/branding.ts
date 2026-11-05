@@ -5,6 +5,8 @@ export const BRAND = {
   logo: "/assets/branding/tvpays-brand.png",
   /** Square crop (TV mark) — compact header / HQ sidebar. */
   mark: "/assets/branding/tvpays-mark-brand.png",
+  /** Member + auth phone shell background. */
+  appBackground: "/assets/branding/app-background.png",
   alt: "TvPays — Watch • Click • Earn",
 } as const;
 

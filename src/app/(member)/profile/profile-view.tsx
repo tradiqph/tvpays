@@ -30,8 +30,10 @@ import {
   Gift,
   X,
   Lock,
+  Send,
 } from "lucide-react";
 import { AgentReferralGateModal } from "@/components/member/AgentReferralGateModal";
+import { openTelegramOfficialGroup } from "@/lib/community";
 
 type Profile = {
   member_code: string;
@@ -41,8 +43,6 @@ type Profile = {
   ads_points: number;
   agent_status: string;
   referral_code: string;
-  xp: number;
-  level: number;
   subscription_ends_at: string | null;
   trial_ends_at: string | null;
   first_paid_plan_at: string | null;
@@ -72,7 +72,7 @@ export function ProfileView() {
     const { data } = await supabase
       .from("profiles")
       .select(
-        "member_code, display_name, avatar_url, plan_slug, ads_points, agent_status, referral_code, xp, level, subscription_ends_at, trial_ends_at, first_paid_plan_at",
+        "member_code, display_name, avatar_url, plan_slug, ads_points, agent_status, referral_code, subscription_ends_at, trial_ends_at, first_paid_plan_at",
       )
       .eq("id", user.id)
       .single();
@@ -125,7 +125,6 @@ export function ProfileView() {
       ? "Waiting for Agent approval"
       : "Apply as Agent to unlock";
   const badge = isAgent ? "Agent" : "VIP Member";
-  const xp = profile?.xp ?? 0;
   const trialDaysLeft = daysRemainingUntil(profile?.trial_ends_at);
   const membershipDaysLeft = daysRemainingUntil(profile?.subscription_ends_at);
 
@@ -171,6 +170,13 @@ export function ProfileView() {
       href: "/media",
     },
     { icon: Shield, tone: "blue", title: "Security", sub: "Change password and security settings", href: "/profile/security" },
+    {
+      icon: Send,
+      tone: "blue",
+      title: "Official Group",
+      sub: "Telegram community",
+      onClick: openTelegramOfficialGroup,
+    },
     { icon: Headphones, tone: "slate", title: "Help & Support", sub: "FAQs and contact support", href: "/profile/help" },
     { icon: Settings, tone: "blue", title: "Settings", sub: "App preferences and notifications", href: "/profile/settings" },
   ];
@@ -257,38 +263,40 @@ export function ProfileView() {
             </Link>
           </div>
 
-          {/* Current plan + XP */}
-          <div className="relative mt-3 flex items-center gap-3 rounded-xl border border-sky-300/30 bg-[#06153f]/70 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+          {/* Current plan */}
+          <Link
+            href="/subscriptions"
+            className="relative mt-3 flex items-center gap-3 rounded-xl border border-sky-300/30 bg-[#06153f]/70 px-2.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+          >
             <span
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-amber-200/80 bg-[radial-gradient(circle_at_35%_30%,#fff1a8,#f5b000_55%,#9a5a00)]"
               style={{ boxShadow: "0 0 12px rgba(251,191,36,0.6)" }}
             >
               <Star className="h-5 w-5 fill-amber-100 text-amber-50" />
             </span>
-            <div className="shrink-0 leading-tight">
+            <div className="min-w-0 flex-1 leading-tight">
               <p className="text-base font-extrabold text-white">
                 {plan?.name.toUpperCase()}
               </p>
               <p className="text-[11px] text-sky-100/80">Current Plan</p>
+              {membershipDaysLeft > 0 && profile?.subscription_ends_at ? (
+                <p className="mt-0.5 text-[11px] text-cyan-200/80">
+                  {membershipDaysLeft} day{membershipDaysLeft === 1 ? "" : "s"}{" "}
+                  left · {plan?.adsPerDay ?? 0} ads/day
+                </p>
+              ) : profile?.plan_slug === "trial" && trialDaysLeft > 0 ? (
+                <p className="mt-0.5 text-[11px] text-cyan-200/80">
+                  Trial · {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}{" "}
+                  left
+                </p>
+              ) : (
+                <p className="mt-0.5 text-[11px] text-sky-200/70">
+                  Tap to view or upgrade plans
+                </p>
+              )}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between text-xs">
-                <span className="font-semibold text-white">
-                  Level {profile?.level ?? 1}
-                </span>
-                <span className="text-sky-100/80">{xp} / 500 XP</span>
-              </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#020a24] shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-sky-400 to-cyan-300 shadow-[0_0_8px_rgba(56,189,248,0.9)]"
-                  style={{ width: `${Math.min(100, (xp / 500) * 100)}%` }}
-                />
-              </div>
-            </div>
-            <Link href="/subscriptions" className="shrink-0">
-              <ChevronRight className="h-5 w-5 text-white" />
-            </Link>
-          </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-white" />
+          </Link>
 
           <div className="relative mt-2 rounded-xl border border-cyan-400/30 bg-[#04102a]/85 px-2.5 py-2.5">
             <div className="flex items-start gap-2.5">

@@ -5,6 +5,7 @@ Drop generated PNGs here (see member UI plan):
 - `branding/tvpays logo.png` — **source of truth** for the brand lockup (edit this, then run `python scripts/build-brand-assets.py`)
 - `branding/tvpays-brand.png` — canonical full logo (login + member header)
 - `branding/tvpays-mark-brand.png` — square TV mark (compact header / HQ)
+- `branding/app-background.png` — phone shell background (member + auth via PhoneFrame)
 - `wallet/deposit.png`, `spending.png`, `withdrawal.png`
 - `plans/{slug}.png` — subscription hero badges (9 paid tiers)
 - `stats/play.png`, `coins.png`, `chart.png`, `moneybag.png`

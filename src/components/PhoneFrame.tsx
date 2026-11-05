@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import type { ReactNode } from "react";
+import { BRAND } from "@/lib/branding";
 
 type Props = {
   children: ReactNode;
@@ -18,13 +19,13 @@ export function PhoneFrame({ children, className = "" }: Props) {
           aria-hidden
         />
         <img
-          src="/assets/branding/auth-bg.jpg"
+          src={BRAND.appBackground}
           alt=""
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-90"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
           draggable={false}
         />
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#02040a]/55 via-[#02040a]/25 to-[#02040a]/85]"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#02040a]/50 via-[#02040a]/15 to-[#02040a]/75"
           aria-hidden
         />
         <div
