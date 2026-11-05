@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getHqSession } from "@/lib/hq/auth";
 import {
   fetchMemberAuditDeposits,
-  fetchMemberAuditReferrals,
+  fetchMemberAuditReferralTeam,
   fetchMemberAuditSummary,
   fetchMemberAuditTransactions,
   fetchMemberAuditWithdrawals,
@@ -53,7 +53,12 @@ export async function GET(
   }
 
   if (section === "referrals") {
-    return NextResponse.json(await fetchMemberAuditReferrals(id, limit, offset));
+    const levelRaw = Number(searchParams.get("level") ?? 1);
+    const level =
+      levelRaw === 2 ? 2 : levelRaw === 3 ? 3 : (1 as const);
+    return NextResponse.json(
+      await fetchMemberAuditReferralTeam(id, level, limit, offset),
+    );
   }
 
   return NextResponse.json({ error: "Unknown section" }, { status: 400 });

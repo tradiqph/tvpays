@@ -72,8 +72,7 @@ export async function fetchMemberAuditSummary(userId: string) {
       .from("wallet_ledger")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
-      .lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP)
-      .gt("amount", -OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+      .lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
     ledgerCountQuery = applyHiddenWithdrawalLedgerExclusion(
       ledgerCountQuery,
       hiddenWithdrawalIds,
@@ -124,6 +123,7 @@ export async function fetchMemberAuditSummary(userId: string) {
       ledger: ledgerTotal,
       referrals: referralCount.count ?? 0,
     },
+    referralTeam: await fetchMemberAuditReferralTeamCounts(userId),
   };
 }
 
@@ -150,9 +150,7 @@ export async function fetchMemberAuditTransactions(
     .range(off, off + lim - 1);
   query = applyHiddenWithdrawalLedgerExclusion(query, hiddenWithdrawalIds);
   if (isOxfordAccountEmail(email)) {
-    query = query
-      .lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP)
-      .gt("amount", -OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+    query = query.lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
   }
 
   const { data, count } = await query;
@@ -244,21 +242,83 @@ export async function fetchMemberAuditWithdrawals(
   };
 }
 
-export async function fetchMemberAuditReferrals(
+export type ReferralTeamLevel = 1 | 2 | 3;
+
+export type ReferralTeamCounts = { l1: number; l2: number; l3: number };
+
+async function referralDownlineIdSets(
+  admin: ReturnType<typeof createAdminClient>,
   userId: string,
+): Promise<{ l1Ids: string[]; l2Ids: string[] }> {
+  const { data: l1Rows } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("referred_by", userId);
+  const l1Ids = (l1Rows ?? []).map((r) => r.id);
+
+  if (l1Ids.length === 0) {
+    return { l1Ids, l2Ids: [] };
+  }
+
+  const { data: l2Rows } = await admin
+    .from("profiles")
+    .select("id")
+    .in("referred_by", l1Ids);
+  const l2Ids = (l2Rows ?? []).map((r) => r.id);
+
+  return { l1Ids, l2Ids };
+}
+
+export async function fetchMemberAuditReferralTeamCounts(
+  userId: string,
+): Promise<ReferralTeamCounts> {
+  const admin = createAdminClient();
+  const { l1Ids, l2Ids } = await referralDownlineIdSets(admin, userId);
+
+  let l3 = 0;
+  if (l2Ids.length > 0) {
+    const { count } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .in("referred_by", l2Ids);
+    l3 = count ?? 0;
+  }
+
+  return { l1: l1Ids.length, l2: l2Ids.length, l3 };
+}
+
+export async function fetchMemberAuditReferralTeam(
+  userId: string,
+  level: ReferralTeamLevel,
   limit: number,
   offset: number,
 ) {
   const admin = createAdminClient();
   const lim = clampLimit(limit);
   const off = clampOffset(offset);
+  const { l1Ids, l2Ids } = await referralDownlineIdSets(admin, userId);
 
-  const { data, count } = await admin
-    .from("profiles")
-    .select("id, member_code, display_name, plan_slug, created_at", {
-      count: "exact",
-    })
-    .eq("referred_by", userId)
+  if (level === 2 && l1Ids.length === 0) {
+    return { rows: [], total: 0, limit: lim, offset: off, level };
+  }
+  if (level === 3 && l2Ids.length === 0) {
+    return { rows: [], total: 0, limit: lim, offset: off, level };
+  }
+
+  let query = admin.from("profiles").select(
+    "id, member_code, display_name, plan_slug, created_at",
+    { count: "exact" },
+  );
+
+  if (level === 1) {
+    query = query.eq("referred_by", userId);
+  } else if (level === 2) {
+    query = query.in("referred_by", l1Ids);
+  } else {
+    query = query.in("referred_by", l2Ids);
+  }
+
+  const { data, count } = await query
     .order("created_at", { ascending: false })
     .range(off, off + lim - 1);
 
@@ -267,6 +327,22 @@ export async function fetchMemberAuditReferrals(
     total: count ?? 0,
     limit: lim,
     offset: off,
+    level,
+  };
+}
+
+/** @deprecated Use fetchMemberAuditReferralTeam with level 1 */
+export async function fetchMemberAuditReferrals(
+  userId: string,
+  limit: number,
+  offset: number,
+) {
+  const result = await fetchMemberAuditReferralTeam(userId, 1, limit, offset);
+  return {
+    rows: result.rows,
+    total: result.total,
+    limit: result.limit,
+    offset: result.offset,
   };
 }
 

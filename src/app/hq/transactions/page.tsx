@@ -29,6 +29,8 @@ const ENTRY_TYPES = [
   "drama_episode",
   "referral_upgrade",
   "agent_sale",
+  "hq_credit_deposit",
+  "hq_credit_withdrawal",
 ];
 const BUCKETS = ["deposit", "spending", "withdrawal"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -73,9 +75,7 @@ async function Ledger({ searchParams }: { searchParams: Promise<Params> }) {
   const oxfordUserId = await getOxfordUserId(admin);
   if (oxfordUserId) {
     const cap = OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP;
-    query = query.or(
-      `user_id.neq.${oxfordUserId},and(user_id.eq.${oxfordUserId},amount.lt.${cap},amount.gt.-${cap})`,
-    );
+    query = query.or(`user_id.neq.${oxfordUserId},amount.lt.${cap}`);
   }
   if (params.type && ENTRY_TYPES.includes(params.type)) query = query.eq("entry_type", params.type);
   if (params.bucket && BUCKETS.includes(params.bucket)) query = query.eq("bucket", params.bucket);
@@ -83,15 +83,20 @@ async function Ledger({ searchParams }: { searchParams: Promise<Params> }) {
     query = query.eq("user_id", params.member);
     const { data: authRes } = await admin.auth.admin.getUserById(params.member);
     if (isOxfordAccountEmail(authRes.user?.email)) {
-      query = query
-        .lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP)
-        .gt("amount", -OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+      query = query.lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
     }
   }
 
   const { data, count, error } = await query;
   if (error) return <EmptyState title="Couldn't load transactions" text={error.message} />;
-  const rows = (data ?? []) as unknown as Row[];
+  const rows = ((data ?? []) as unknown as Row[]).filter(
+    (r) =>
+      !(
+        oxfordUserId &&
+        r.user_id === oxfordUserId &&
+        Number(r.amount) >= OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP
+      ),
+  );
   if (!rows.length) return <EmptyState icon={ArrowLeftRight} title="No transactions match" />;
 
   const amount = (n: number) => (

@@ -12,8 +12,14 @@ const TABS = [
   { id: "transactions", label: "Transactions" },
   { id: "deposits", label: "Deposits" },
   { id: "withdrawals", label: "Withdrawals" },
-  { id: "referrals", label: "Referrals" },
+  { id: "referrals", label: "Referral team" },
 ] as const;
+
+const REFERRAL_LEVELS = [
+  { level: 1 as const, label: "L1" },
+  { level: 2 as const, label: "L2" },
+  { level: 3 as const, label: "L3" },
+];
 
 type TabId = (typeof TABS)[number]["id"];
 
@@ -31,6 +37,7 @@ type Summary = {
   wallet: { deposit: number; spending: number; withdrawal: number } | null;
   upline: { id: string; member_code: string; display_name: string | null } | null;
   counts: { ledger: number; referrals: number };
+  referralTeam: { l1: number; l2: number; l3: number };
 };
 
 export function MemberAuditView({
@@ -47,6 +54,7 @@ export function MemberAuditView({
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
+  const [referralLevel, setReferralLevel] = useState<1 | 2 | 3>(1);
   const limit = 50;
 
   const load = useCallback(async () => {
@@ -57,6 +65,9 @@ export function MemberAuditView({
       if (tab !== "summary") {
         params.set("limit", String(limit));
         params.set("offset", String(offset));
+      }
+      if (tab === "referrals") {
+        params.set("level", String(referralLevel));
       }
       const res = await fetch(
         `/api/hq/members/${memberId}/audit?${params.toString()}`,
@@ -79,7 +90,7 @@ export function MemberAuditView({
     } finally {
       setLoading(false);
     }
-  }, [memberId, tab, offset]);
+  }, [memberId, tab, offset, referralLevel]);
 
   useEffect(() => {
     void load();
@@ -87,7 +98,7 @@ export function MemberAuditView({
 
   useEffect(() => {
     setOffset(0);
-  }, [tab]);
+  }, [tab, referralLevel]);
 
   const pages = Math.max(1, Math.ceil(total / limit));
   const page = Math.floor(offset / limit) + 1;
@@ -187,9 +198,19 @@ export function MemberAuditView({
                   )}
                 </dd>
               </div>
-              <div>
-                <dt className="text-[11px] text-slate-500">Direct referrals</dt>
-                <dd className="text-slate-200">{summary.counts.referrals}</dd>
+              <div className="col-span-2">
+                <dt className="text-[11px] text-slate-500">Referral team</dt>
+                <dd className="mt-1 flex flex-wrap gap-2 text-slate-200">
+                  <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-xs tabular-nums">
+                    L1 {summary.referralTeam?.l1 ?? summary.counts.referrals}
+                  </span>
+                  <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-xs tabular-nums">
+                    L2 {summary.referralTeam?.l2 ?? 0}
+                  </span>
+                  <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-xs tabular-nums">
+                    L3 {summary.referralTeam?.l3 ?? 0}
+                  </span>
+                </dd>
               </div>
             </dl>
           </Card>
@@ -312,10 +333,41 @@ export function MemberAuditView({
         </Card>
       )}
 
+      {tab === "referrals" && (
+        <div className="flex flex-wrap gap-1 rounded-xl bg-white/[0.03] p-1 ring-1 ring-white/[0.06]">
+          {REFERRAL_LEVELS.map(({ level, label }) => {
+            const count =
+              level === 1
+                ? (summary?.referralTeam?.l1 ?? summary?.counts.referrals)
+                : level === 2
+                  ? summary?.referralTeam?.l2
+                  : summary?.referralTeam?.l3;
+            return (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setReferralLevel(level)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  referralLevel === level
+                    ? "bg-violet-500/25 text-violet-100"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {label}
+                {typeof count === "number" ? ` (${count})` : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {tab === "referrals" && !loading && (
-        <Card title="Direct referrals" padded={false}>
+        <Card
+          title={`Level ${referralLevel} referrals`}
+          padded={false}
+        >
           {rows.length === 0 ? (
-            <EmptyState title="No referrals" />
+            <EmptyState title={`No L${referralLevel} members`} />
           ) : (
             <ul className="divide-y divide-white/[0.04]">
               {rows.map((r) => (

@@ -21,6 +21,10 @@ import {
 import { humanize, manilaDay, php, phpCompact } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
 import {
+  getOxfordUserId,
+  shouldHideOxfordHqLedgerRow,
+} from "@/lib/oxford-account";
+import {
   applyHiddenWithdrawalLedgerExclusion,
   fetchHiddenWithdrawalIds,
 } from "@/lib/wallet-ledger-visibility";
@@ -42,7 +46,7 @@ async function loadDashboard() {
     .order("created_at", { ascending: false })
     .limit(8);
   ledgerQuery = applyHiddenWithdrawalLedgerExclusion(ledgerQuery, hiddenWithdrawalIds);
-
+  const oxfordUserIdPromise = getOxfordUserId(admin);
   const staffIdsPromise = getStaffUserIds();
 
   const [members, newMembers, signups, deposits, pendingW, processingW, wallets, ledger, queue] =
@@ -94,6 +98,7 @@ async function loadDashboard() {
     .reduce((s, r) => s + Number(r.amount), 0);
   const pendingSum = (pendingW.data ?? []).reduce((s, r) => s + Number(r.net_amount), 0);
   const staffIds = await staffIdsPromise;
+  const oxfordUserId = await oxfordUserIdPromise;
   const held = (wallets.data ?? [])
     .filter((w) => !staffIds.has(w.user_id))
     .reduce(
@@ -114,7 +119,7 @@ async function loadDashboard() {
     held,
     signupChart: days.map((d) => ({ label: d.label, value: signupBy.get(d.key) ?? 0 })),
     depositChart: days.map((d) => ({ label: d.label, value: depositBy.get(d.key) ?? 0 })),
-    ledger: (ledger.data ?? []) as unknown as {
+    ledger: ((ledger.data ?? []) as unknown as {
       id: string;
       amount: number;
       entry_type: string;
@@ -122,7 +127,14 @@ async function loadDashboard() {
       created_at: string;
       user_id: string;
       profiles: Profileish;
-    }[],
+    }[]).filter(
+      (row) =>
+        !shouldHideOxfordHqLedgerRow(
+          oxfordUserId,
+          row.user_id,
+          Number(row.amount),
+        ),
+    ),
     queue: (queue.data ?? []) as unknown as {
       id: string;
       net_amount: number;

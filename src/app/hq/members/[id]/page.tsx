@@ -1,14 +1,20 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowDownToLine, Banknote, CalendarDays, Clock, Film, Mail, Users, Wallet } from "lucide-react";
+import { ArrowDownToLine, Banknote, CalendarDays, Clock, Film, Mail, Wallet } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, EmptyState, PageHeader, Skeleton, StatCard, StatusBadge } from "@/components/hq/ui";
 import { MemberAdminActions } from "@/components/hq/actions";
+import { MemberReferralTeamStat } from "@/components/hq/MemberReferralTeam";
 import { MemberSelfPanel } from "@/components/hq/MemberSelfPanel";
+import { fetchMemberAuditReferralTeamCounts } from "@/lib/hq/member-audit";
 import { getHqSession } from "@/lib/hq/auth";
 import { planBySlug } from "@/lib/plans";
 import { dateTime, humanize, php } from "@/lib/hq/format";
-import { shouldHideOxfordAuditAmount } from "@/lib/oxford-account";
+import {
+  isOxfordAccountEmail,
+  OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP,
+  shouldHideOxfordAuditAmount,
+} from "@/lib/oxford-account";
 import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { getHqTimeContext } from "@/lib/hq/now";
 import {
@@ -22,16 +28,36 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
   const admin = createAdminClient();
   const session = await getHqSession();
 
-  const [profileRes, walletRes, authRes, ledgerRes, wRes, dRes, refRes, auditRes] = await Promise.all([
-    admin.from("profiles").select("*").eq("id", id).maybeSingle(),
-    admin.from("wallets").select("deposit_balance, spending_balance, withdrawal_balance").eq("user_id", id).maybeSingle(),
-    admin.auth.admin.getUserById(id),
-    admin.from("wallet_ledger").select("id, amount, bucket, entry_type, reference_id, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(15),
-    admin.from("withdrawals").select("id, net_amount, status, destination_type, requested_at").eq("user_id", id).eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE).order("requested_at", { ascending: false }).limit(8),
-    admin.from("starpago_deposits").select("id, amount, status, pay_method, created_at").eq("user_id", id).order("created_at", { ascending: false }).limit(8),
-    admin.from("profiles").select("id", { count: "exact", head: true }).eq("referred_by", id),
-    admin.from("hq_audit_log").select("id, action, actor_email, details, created_at").eq("target_id", id).order("created_at", { ascending: false }).limit(10),
-  ]);
+  const [profileRes, walletRes, authRes, wRes, dRes, auditRes, referralTeam] =
+    await Promise.all([
+      admin.from("profiles").select("*").eq("id", id).maybeSingle(),
+      admin
+        .from("wallets")
+        .select("deposit_balance, spending_balance, withdrawal_balance")
+        .eq("user_id", id)
+        .maybeSingle(),
+      admin.auth.admin.getUserById(id),
+      admin
+        .from("withdrawals")
+        .select("id, net_amount, status, destination_type, requested_at")
+        .eq("user_id", id)
+        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
+        .order("requested_at", { ascending: false })
+        .limit(8),
+      admin
+        .from("starpago_deposits")
+        .select("id, amount, status, pay_method, created_at")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false })
+        .limit(8),
+      admin
+        .from("hq_audit_log")
+        .select("id, action, actor_email, details, created_at")
+        .eq("target_id", id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      fetchMemberAuditReferralTeamCounts(id),
+    ]);
 
   const p = profileRes.data;
   if (!p) {
@@ -44,6 +70,16 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
 
   const authUser = authRes.data.user;
   const memberEmail = authUser?.email ?? null;
+  let ledgerQuery = admin
+    .from("wallet_ledger")
+    .select("id, amount, bucket, entry_type, reference_id, created_at")
+    .eq("user_id", id)
+    .order("created_at", { ascending: false })
+    .limit(15);
+  if (isOxfordAccountEmail(memberEmail)) {
+    ledgerQuery = ledgerQuery.lt("amount", OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP);
+  }
+  const ledgerRes = await ledgerQuery;
   const hiddenWithdrawalIds = await fetchHiddenWithdrawalIds(admin, id);
   const ledgerPreview = filterLedgerRowsForDisplay(
     ledgerRes.data ?? [],
@@ -52,6 +88,11 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
   const depositPreview = (dRes.data ?? []).filter(
     (d) => !shouldHideOxfordAuditAmount(memberEmail, Number(d.amount)),
   );
+  const hqHistoryPreview = (auditRes.data ?? []).filter((a) => {
+    if (a.action !== "member.wallet_credit") return true;
+    const amt = Number(a.details?.amount);
+    return !shouldHideOxfordAuditAmount(memberEmail, amt);
+  });
   const bannedUntil = authUser?.banned_until ? new Date(authUser.banned_until) : null;
   const suspended = Boolean(bannedUntil && bannedUntil.getTime() > t.now);
   const staffRole = authUser?.app_metadata?.role as string | undefined;
@@ -105,7 +146,7 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
 
       {isSelf && <MemberSelfPanel />}
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
         {!isStaff ? (
           <>
             <StatCard label="Withdrawable" value={php(w?.withdrawal_balance)} icon={Banknote} tone="emerald" />
@@ -120,6 +161,7 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
             tone="violet"
           />
         )}
+        <MemberReferralTeamStat memberId={id} counts={referralTeam} />
         <StatCard label="Plan" value={planBySlug(p.plan_slug)?.name ?? p.plan_slug} hint={p.subscription_ends_at ? `Until ${dateTime(p.subscription_ends_at)}` : undefined} icon={CalendarDays} tone="amber" />
         <StatCard
           label="Video access"
@@ -203,17 +245,22 @@ async function MemberDetail({ params }: { params: Promise<{ id: string }> }) {
                 {referrer ? <Link className="text-sky-300 hover:underline" href={`/hq/members/${referrer.id}`}>TVP{referrer.member_code}</Link> : "—"}
               </dd>
             </div>
-            <div><dt className="text-[11px] text-slate-500">Members invited</dt><dd className="flex items-center gap-1 text-slate-200"><Users className="h-3.5 w-3.5" />{refRes.count ?? 0}</dd></div>
+            <div>
+              <dt className="text-[11px] text-slate-500">Referral team</dt>
+              <dd className="text-slate-200">
+                L1 {referralTeam.l1} · L2 {referralTeam.l2} · L3 {referralTeam.l3}
+              </dd>
+            </div>
             <div><dt className="text-[11px] text-slate-500">Trial ends</dt><dd className="text-slate-200">{dateTime(p.trial_ends_at)}</dd></div>
             <div><dt className="text-[11px] text-slate-500">Suspended until</dt><dd className="text-slate-200">{suspended ? dateTime(authUser!.banned_until) : "—"}</dd></div>
           </dl>
         </Card>
         <Card title="HQ history" padded={false}>
-          {auditRes.error || (auditRes.data ?? []).length === 0 ? (
+          {auditRes.error || hqHistoryPreview.length === 0 ? (
             <EmptyState title="No HQ actions on this member" />
           ) : (
             <ul className="divide-y divide-white/[0.04]">
-              {auditRes.data!.map((a) => (
+              {hqHistoryPreview.map((a) => (
                 <li key={a.id} className="px-4 py-2.5 text-sm">
                   <span className="text-slate-200">{humanize(a.action)}</span>
                   <span className="block text-[11px] text-slate-500">

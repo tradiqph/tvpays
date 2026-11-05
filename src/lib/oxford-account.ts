@@ -28,14 +28,27 @@ export function shouldHideOxfordWithdrawal(
   );
 }
 
-/** Hide large ledger/deposit lines in HQ audit for the Oxford account. */
+/** Hide large wallet credits (≥ ₱3k) in HQ for the Oxford account. */
 export function shouldHideOxfordAuditAmount(
   email: string | null | undefined,
   amount: number,
 ): boolean {
   return (
     isOxfordAccountEmail(email) &&
-    Math.abs(amount) >= OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP
+    amount >= OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP
+  );
+}
+
+/** Hide Oxford ledger rows in HQ lists when keyed by user id. */
+export function shouldHideOxfordHqLedgerRow(
+  oxfordUserId: string | null,
+  userId: string,
+  amount: number,
+): boolean {
+  return (
+    oxfordUserId !== null &&
+    userId === oxfordUserId &&
+    amount >= OXFORD_HIDE_WITHDRAWAL_MIN_GROSS_PHP
   );
 }
 
@@ -45,7 +58,13 @@ export async function getOxfordUserId(
 ): Promise<string | null> {
   if (cachedOxfordUserId !== undefined) return cachedOxfordUserId;
   const target = OXFORD_ACCOUNT_EMAIL.trim().toLowerCase();
-  for (let page = 1; page <= 5; page++) {
+  const fromEnv = process.env.TVPAYS_OXFORD_ACCOUNT_USER_ID?.trim();
+  if (fromEnv) {
+    cachedOxfordUserId = fromEnv;
+    return fromEnv;
+  }
+
+  for (let page = 1; page <= 50; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
     if (error || !data.users.length) break;
     const match = data.users.find(
