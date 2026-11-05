@@ -31,9 +31,11 @@ import {
   X,
   Lock,
   Send,
+  Smartphone,
 } from "lucide-react";
 import { AgentReferralGateModal } from "@/components/member/AgentReferralGateModal";
 import { openTelegramOfficialGroup } from "@/lib/community";
+import { ANDROID_APK_VERSION, downloadAndroidApk } from "@/lib/app-download";
 
 type Profile = {
   member_code: string;
@@ -176,6 +178,13 @@ export function ProfileView() {
       title: "Official Group",
       sub: "Telegram community",
       onClick: openTelegramOfficialGroup,
+    },
+    {
+      icon: Smartphone,
+      tone: "green",
+      title: "Download Android app",
+      sub: `TvPays v${ANDROID_APK_VERSION} APK`,
+      onClick: downloadAndroidApk,
     },
     { icon: Headphones, tone: "slate", title: "Help & Support", sub: "FAQs and contact support", href: "/profile/help" },
     { icon: Settings, tone: "blue", title: "Settings", sub: "App preferences and notifications", href: "/profile/settings" },

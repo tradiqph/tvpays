@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Mail, MessageCircleQuestion, Send } from "lucide-react";
+import { ChevronDown, Download, Mail, MessageCircleQuestion, Send, Smartphone } from "lucide-react";
+import {
+  ANDROID_APK_FILENAME,
+  ANDROID_APK_HREF,
+  ANDROID_APK_VERSION,
+  ANDROID_DOWNLOAD_BUTTON_CLASS,
+  ANDROID_DOWNLOAD_BUTTON_STYLE,
+} from "@/lib/app-download";
 import { SubPageHeader } from "@/components/member/SubPageHeader";
 import { GlossIcon, GlossPanel } from "@/components/member/ProfileGloss";
 import { TELEGRAM_OFFICIAL_GROUP_URL } from "@/lib/community";
@@ -40,6 +47,10 @@ const FAQS: { q: string; a: string }[] = [
   {
     q: "How do I join the official group?",
     a: "Tap Join official Telegram group below or Profile → Official Group. You'll open our community chat on Telegram for updates and support from the team.",
+  },
+  {
+    q: "How do I install the Android app?",
+    a: "Tap Download Android app below (or Profile → Settings). Open the APK when it finishes, allow installs from your browser if prompted, then sign in with the same account.",
   },
 ];
 
@@ -98,6 +109,25 @@ export function HelpView() {
             );
           })}
         </ul>
+
+        <GlossPanel className="p-4 text-center">
+          <div className="flex justify-center">
+            <GlossIcon icon={Smartphone} tone="green" size="h-9 w-9" />
+          </div>
+          <p className="mt-2 text-sm font-bold text-white">Download Android app</p>
+          <p className="mt-0.5 text-xs text-sky-100/70">
+            Install TvPays v{ANDROID_APK_VERSION} on your phone.
+          </p>
+          <a
+            href={ANDROID_APK_HREF}
+            download={ANDROID_APK_FILENAME}
+            className={`mt-3 ${ANDROID_DOWNLOAD_BUTTON_CLASS}`}
+            style={ANDROID_DOWNLOAD_BUTTON_STYLE}
+          >
+            <Download className="h-4 w-4" />
+            Download Android app
+          </a>
+        </GlossPanel>
 
         <GlossPanel className="p-4 text-center">
           <p className="text-sm font-bold text-white">Official Telegram group</p>

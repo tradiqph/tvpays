@@ -19,8 +19,15 @@ import {
   Timer,
   VolumeX,
   Wallet,
+  Smartphone,
+  Download,
   type LucideIcon,
 } from "lucide-react";
+import {
+  ANDROID_APK_HREF,
+  ANDROID_APK_VERSION,
+  ANDROID_APK_FILENAME,
+} from "@/lib/app-download";
 import { SubPageHeader } from "@/components/member/SubPageHeader";
 import { AlertDialog } from "@/components/member/AlertDialog";
 import { GlossIcon, GlossPanel, type Tone } from "@/components/member/ProfileGloss";
@@ -218,6 +225,18 @@ export function SettingsView({ sources }: { sources: { key: string; label: strin
         </Section>
 
         <Section title="More" delay={0.15}>
+          <a
+            href={ANDROID_APK_HREF}
+            download={ANDROID_APK_FILENAME}
+            className="flex items-center gap-3 px-3 py-3"
+          >
+            <GlossIcon icon={Smartphone} tone="green" size="h-9 w-9" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white">Download Android app</p>
+              <p className="text-xs text-sky-100/70">TvPays v{ANDROID_APK_VERSION} · APK</p>
+            </div>
+            <Download className="h-4 w-4 text-emerald-300" aria-hidden />
+          </a>
           <Link href="/profile/help" className="flex items-center gap-3 px-3 py-3">
             <GlossIcon icon={Headphones} tone="slate" size="h-9 w-9" />
             <div className="min-w-0 flex-1">

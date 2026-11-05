@@ -5,7 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Mail } from "lucide-react";
+import { Download, Lock, Mail } from "lucide-react";
+import {
+  ANDROID_APK_FILENAME,
+  ANDROID_APK_HREF,
+  ANDROID_APK_VERSION,
+  ANDROID_DOWNLOAD_BUTTON_CLASS,
+  ANDROID_DOWNLOAD_BUTTON_STYLE,
+} from "@/lib/app-download";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
@@ -162,12 +169,23 @@ export default function LoginPage() {
       title="Welcome back"
       hero
       footer={
-        <p className="text-center text-sm text-slate-300/80">
-          No account?{" "}
-          <Suspense fallback={<span className="font-semibold text-amber-200">Sign up</span>}>
-            <SignupLinkFromInvite />
-          </Suspense>
-        </p>
+        <div className="space-y-3">
+          <p className="text-center text-sm text-slate-300/80">
+            No account?{" "}
+            <Suspense fallback={<span className="font-semibold text-amber-200">Sign up</span>}>
+              <SignupLinkFromInvite />
+            </Suspense>
+          </p>
+          <a
+            href={ANDROID_APK_HREF}
+            download={ANDROID_APK_FILENAME}
+            className={`mx-auto flex w-fit ${ANDROID_DOWNLOAD_BUTTON_CLASS}`}
+            style={ANDROID_DOWNLOAD_BUTTON_STYLE}
+          >
+            <Download className="h-4 w-4" />
+            Android app v{ANDROID_APK_VERSION}
+          </a>
+        </div>
       }
     >
       <Suspense fallback={<p className="text-slate-500">Loading…</p>}>
