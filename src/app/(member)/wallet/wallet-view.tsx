@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronRight,
-  MoreVertical,
   Play,
   Video,
   UserPlus,
@@ -18,9 +17,7 @@ import {
   WithdrawIconArt,
 } from "@/components/member/WalletIconArt";
 import { TopupSheet } from "@/components/wallet/TopupSheet";
-import { TransferSheet } from "@/components/wallet/TransferSheet";
 import { WithdrawSheet } from "@/components/wallet/WithdrawSheet";
-import type { WalletTransferDirection } from "@/lib/wallet-transfer";
 import { AlertDialog } from "@/components/member/AlertDialog";
 import { formatPhp } from "@/lib/format";
 import {
@@ -140,8 +137,6 @@ function BalanceCard({
   icon,
   actionLabel,
   onAction,
-  transferLabel,
-  onTransfer,
 }: {
   accent: "blue" | "purple" | "green";
   title: string;
@@ -149,8 +144,6 @@ function BalanceCard({
   icon: ReactNode;
   actionLabel: string;
   onAction: () => void;
-  transferLabel?: string;
-  onTransfer?: () => void;
 }) {
   const animated = useCountUp(amount);
   const st = CARD_STYLES[accent];
@@ -165,16 +158,6 @@ function BalanceCard({
       {/* top gloss + diagonal light streak */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent" />
       <div className="pointer-events-none absolute -right-10 -top-8 h-40 w-24 rotate-[35deg] bg-gradient-to-b from-white/25 to-transparent blur-md" />
-      {onTransfer ? (
-        <button
-          type="button"
-          onClick={onTransfer}
-          className="absolute right-2.5 top-2.5 text-white/90"
-          aria-label={transferLabel ?? "Transfer balance"}
-        >
-          <MoreVertical className="h-5 w-5" />
-        </button>
-      ) : null}
       <div className="relative flex items-center gap-3">
         {icon}
         <div className="min-w-0 flex-1">
@@ -184,7 +167,7 @@ function BalanceCard({
           <p className="text-[28px] font-extrabold leading-tight tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]">
             {formatPhp(animated)}
           </p>
-          <div className="mt-1 flex flex-col items-end gap-1">
+          <div className="mt-1 flex justify-end">
             <button
               type="button"
               onClick={onAction}
@@ -196,15 +179,6 @@ function BalanceCard({
               {actionLabel}{" "}
               <ChevronRight className="h-4 w-4" strokeWidth={3} />
             </button>
-            {onTransfer && transferLabel ? (
-              <button
-                type="button"
-                onClick={onTransfer}
-                className="text-[11px] font-semibold text-white/85 underline-offset-2 hover:underline"
-              >
-                {transferLabel}
-              </button>
-            ) : null}
           </div>
         </div>
       </div>
@@ -221,9 +195,6 @@ export function WalletView() {
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [transferOpen, setTransferOpen] = useState(false);
-  const [transferDirection, setTransferDirection] =
-    useState<WalletTransferDirection>("deposit_to_withdrawal");
   const [canWithdraw, setCanWithdraw] = useState(false);
   const [withdrawTaxExempt, setWithdrawTaxExempt] = useState(false);
   const [withdrawBlockedOpen, setWithdrawBlockedOpen] = useState(false);
@@ -373,11 +344,6 @@ export function WalletView() {
     else void load();
   }
 
-  function openTransfer(direction: WalletTransferDirection) {
-    setTransferDirection(direction);
-    setTransferOpen(true);
-  }
-
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <MemberHeader />
@@ -396,8 +362,6 @@ export function WalletView() {
               icon={<DepositIconArt />}
               actionLabel="Topup"
               onAction={() => setTopupOpen(true)}
-              transferLabel="Move to withdrawal wallet"
-              onTransfer={() => openTransfer("deposit_to_withdrawal")}
             />
           </motion.div>
           <motion.div variants={rowVariants}>
@@ -410,8 +374,6 @@ export function WalletView() {
               onAction={() =>
                 canWithdraw ? setWithdrawOpen(true) : setWithdrawBlockedOpen(true)
               }
-              transferLabel="Move to deposit wallet"
-              onTransfer={() => openTransfer("withdrawal_to_deposit")}
             />
           </motion.div>
         </motion.div>
@@ -559,14 +521,6 @@ export function WalletView() {
       </div>
 
       <TopupSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
-      <TransferSheet
-        open={transferOpen}
-        onClose={() => setTransferOpen(false)}
-        direction={transferDirection}
-        depositBalance={deposit}
-        withdrawalBalance={withdrawal}
-        onSuccess={() => void load()}
-      />
       <WithdrawSheet
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
