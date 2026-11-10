@@ -19,6 +19,13 @@ export const PLAN_THEMES: Record<string, PlanTheme> = {
     badgeGradient: "from-teal-600 to-cyan-900",
     modelSrc: modelSrc("trial"),
   },
+  basic: {
+    accent: "#34d399",
+    glow: "rgba(52, 211, 153, 0.45)",
+    heroBorder: "rgba(52, 211, 153, 0.55)",
+    badgeGradient: "from-emerald-500 to-teal-900",
+    modelSrc: modelSrc("basic"),
+  },
   elite: {
     accent: "#38bdf8",
     glow: "rgba(56, 189, 248, 0.5)",

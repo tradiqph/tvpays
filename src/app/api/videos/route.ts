@@ -87,6 +87,7 @@ export async function GET(request: Request) {
         .select("video_id")
         .eq("user_id", user.id)
         .eq("liked", true)
+        .eq("like_date", today)
         .in("video_id", ids)
     : { data: [] as { video_id: string }[] };
   const liked = new Set((likeRows ?? []).map((r) => r.video_id));
