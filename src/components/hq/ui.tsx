@@ -200,22 +200,26 @@ export function Pagination({
   pageSize,
   total,
   hrefFor,
+  showWhenSinglePage = false,
 }: {
   page: number;
   pageSize: number;
   total: number;
   hrefFor: (page: number) => string;
+  /** When true, still show the range summary (and disabled prev/next) on a single page. */
+  showWhenSinglePage?: boolean;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (pages <= 1) return null;
-  const from = (page - 1) * pageSize + 1;
+  if (pages <= 1 && !showWhenSinglePage) return null;
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   const btn =
     "flex h-8 items-center gap-1 rounded-lg border border-white/10 px-2.5 text-xs font-medium text-slate-200 hover:bg-white/5";
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] px-4 py-3 text-xs text-slate-400">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-4 py-3 text-xs text-slate-400">
       <span className="tabular-nums">
-        {from}–{to} of {total.toLocaleString()}
+        {total === 0 ? "No rows" : `${from}–${to} of ${total.toLocaleString()}`}
+        {pages > 1 ? ` · Page ${page} of ${pages}` : ""}
       </span>
       <div className="flex gap-1.5">
         {page > 1 ? (

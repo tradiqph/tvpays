@@ -12,7 +12,25 @@ import { getStaffUserIds, isStaffUserId } from "@/lib/hq/users";
 
 const PAGE_SIZE = 25;
 
-type Params = { q?: string; plan?: string; page?: string };
+const SORT_OPTIONS = [
+  { value: "joined_desc", label: "Newest joined" },
+  { value: "joined_asc", label: "Oldest joined" },
+  { value: "withdraw_desc", label: "Withdrawable (high → low)" },
+  { value: "withdraw_asc", label: "Withdrawable (low → high)" },
+  { value: "deposit_desc", label: "Deposit (high → low)" },
+  { value: "deposit_asc", label: "Deposit (low → high)" },
+] as const;
+
+type SortKey = (typeof SORT_OPTIONS)[number]["value"];
+
+const SORT_VALUES = new Set<string>(SORT_OPTIONS.map((o) => o.value));
+
+type Params = { q?: string; plan?: string; page?: string; sort?: string };
+
+function parseSort(raw: string | undefined): SortKey {
+  if (raw && SORT_VALUES.has(raw)) return raw as SortKey;
+  return "joined_desc";
+}
 
 type Row = {
   id: string;
@@ -28,6 +46,7 @@ function hrefWith(params: Params, page: number) {
   const sp = new URLSearchParams();
   if (params.q) sp.set("q", params.q);
   if (params.plan) sp.set("plan", params.plan);
+  if (params.sort && params.sort !== "joined_desc") sp.set("sort", params.sort);
   if (page > 1) sp.set("page", String(page));
   const qs = sp.toString();
   return `/hq/members${qs ? `?${qs}` : ""}`;
@@ -38,15 +57,48 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const q = safeSearch(params.q);
+  const sort = parseSort(params.sort);
 
   let query = createAdminClient()
     .from("profiles")
     .select(
       "id, member_code, display_name, avatar_url, plan_slug, created_at, wallets(deposit_balance, withdrawal_balance)",
       { count: "exact" },
-    )
-    .order("created_at", { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    );
+
+  switch (sort) {
+    case "joined_asc":
+      query = query.order("created_at", { ascending: true });
+      break;
+    case "withdraw_desc":
+      query = query.order("withdrawal_balance", {
+        ascending: false,
+        foreignTable: "wallets",
+      });
+      break;
+    case "withdraw_asc":
+      query = query.order("withdrawal_balance", {
+        ascending: true,
+        foreignTable: "wallets",
+      });
+      break;
+    case "deposit_desc":
+      query = query.order("deposit_balance", {
+        ascending: false,
+        foreignTable: "wallets",
+      });
+      break;
+    case "deposit_asc":
+      query = query.order("deposit_balance", {
+        ascending: true,
+        foreignTable: "wallets",
+      });
+      break;
+    default:
+      query = query.order("created_at", { ascending: false });
+  }
+
+  query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
   if (q) {
     const code = q.replace(/^tvp/i, "");
@@ -122,7 +174,13 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
           </li>
         ))}
       </ul>
-      <Pagination page={page} pageSize={PAGE_SIZE} total={count ?? 0} hrefFor={(p) => hrefWith(params, p)} />
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={count ?? 0}
+        hrefFor={(p) => hrefWith({ ...params, sort }, p)}
+        showWhenSinglePage
+      />
     </>
   );
 }
@@ -138,6 +196,12 @@ export default function MembersPage({ searchParams }: { searchParams: Promise<Pa
             param="plan"
             label="All plans"
             options={[...SUBSCRIPTION_PLANS].sort((a, b) => a.sortOrder - b.sortOrder).map((p) => ({ value: p.slug, label: p.name }))}
+          />
+          <FilterSelect
+            param="sort"
+            label="Sort by"
+            defaultValue="joined_desc"
+            options={[...SORT_OPTIONS]}
           />
         </Suspense>
       </div>

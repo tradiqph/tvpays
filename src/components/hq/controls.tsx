@@ -67,16 +67,19 @@ export function FilterSelect({
   param,
   options,
   label,
+  defaultValue = "",
 }: {
   param: string;
   label: string;
   options: { value: string; label: string }[];
+  /** Shown when the query param is absent (e.g. default sort). */
+  defaultValue?: string;
 }) {
   const { set, params } = useParamSetter();
   return (
     <select
       aria-label={label}
-      value={params.get(param) ?? ""}
+      value={params.get(param) ?? defaultValue}
       onChange={(e) => set(param, e.target.value || null)}
       className="h-10 rounded-xl border border-white/10 bg-[#0a1630] px-3 text-base text-slate-200 outline-none focus:border-sky-400/50 md:text-sm"
     >
