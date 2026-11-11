@@ -176,9 +176,9 @@ export function HqShell({
   );
 
   return (
-    <div className="fixed inset-0 flex justify-center bg-[#01040c] md:static md:block md:min-h-screen">
+    <div className="fixed inset-0 flex justify-center bg-[#01040c]">
       <div
-        className="relative flex h-[100dvh] w-[min(100vw,calc(100dvh*9/16))] flex-col overflow-hidden bg-[#030a1a] text-slate-100 md:h-auto md:min-h-screen md:w-full md:flex-row md:overflow-visible"
+        className="relative flex h-[100dvh] w-[min(100vw,calc(100dvh*9/16))] flex-col overflow-hidden bg-[#030a1a] text-slate-100 md:h-[100dvh] md:w-full md:flex-row"
         style={{ touchAction: "pan-x pan-y" }}
       >
         {/* Ambient glow */}
@@ -246,8 +246,8 @@ export function HqShell({
           </span>
         </header>
 
-        <main className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 md:overflow-visible md:px-8 md:py-8">
-          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+        <main className="relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-5 md:px-8 md:py-8">
+          <div className="mx-auto w-full max-w-[1400px] pb-6">{children}</div>
         </main>
 
         {/* Mobile bottom nav */}

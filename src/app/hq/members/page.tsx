@@ -1,12 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronRight, Users } from "lucide-react";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { Card, EmptyState, MemberCell, PageHeader, Pagination, StatusBadge, TableSkeleton, table } from "@/components/hq/ui";
+import { Card, EmptyState, MemberCell, PageHeader, Pagination, TableSkeleton, table } from "@/components/hq/ui";
 import { FilterSelect, SearchBox } from "@/components/hq/controls";
+import { fetchHqMembersList, type MembersListSort } from "@/lib/hq/members-list";
 import { SUBSCRIPTION_PLANS, planBySlug } from "@/lib/plans";
-import { isAllowedPlanSlug } from "@/lib/security/input";
-import { dateTime, php, safeSearch } from "@/lib/hq/format";
+import { dateTime, php } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
 import { getStaffUserIds, isStaffUserId } from "@/lib/hq/users";
 
@@ -21,26 +20,14 @@ const SORT_OPTIONS = [
   { value: "deposit_asc", label: "Deposit (low → high)" },
 ] as const;
 
-type SortKey = (typeof SORT_OPTIONS)[number]["value"];
-
 const SORT_VALUES = new Set<string>(SORT_OPTIONS.map((o) => o.value));
 
 type Params = { q?: string; plan?: string; page?: string; sort?: string };
 
-function parseSort(raw: string | undefined): SortKey {
-  if (raw && SORT_VALUES.has(raw)) return raw as SortKey;
+function parseSort(raw: string | undefined): MembersListSort {
+  if (raw && SORT_VALUES.has(raw)) return raw as MembersListSort;
   return "joined_desc";
 }
-
-type Row = {
-  id: string;
-  member_code: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  plan_slug: string;
-  created_at: string;
-  wallets: { deposit_balance: number; withdrawal_balance: number } | null;
-};
 
 function hrefWith(params: Params, page: number) {
   const sp = new URLSearchParams();
@@ -56,65 +43,28 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
   const t = await getHqTimeContext();
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
-  const q = safeSearch(params.q);
   const sort = parseSort(params.sort);
 
-  let query = createAdminClient()
-    .from("profiles")
-    .select(
-      "id, member_code, display_name, avatar_url, plan_slug, created_at, wallets(deposit_balance, withdrawal_balance)",
-      { count: "exact" },
-    );
-
-  switch (sort) {
-    case "joined_asc":
-      query = query.order("created_at", { ascending: true });
-      break;
-    case "withdraw_desc":
-      query = query.order("withdrawal_balance", {
-        ascending: false,
-        foreignTable: "wallets",
-      });
-      break;
-    case "withdraw_asc":
-      query = query.order("withdrawal_balance", {
-        ascending: true,
-        foreignTable: "wallets",
-      });
-      break;
-    case "deposit_desc":
-      query = query.order("deposit_balance", {
-        ascending: false,
-        foreignTable: "wallets",
-      });
-      break;
-    case "deposit_asc":
-      query = query.order("deposit_balance", {
-        ascending: true,
-        foreignTable: "wallets",
-      });
-      break;
-    default:
-      query = query.order("created_at", { ascending: false });
-  }
-
-  query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-
-  if (q) {
-    const code = q.replace(/^tvp/i, "");
-    query = query.or(`member_code.ilike.%${code}%,display_name.ilike.%${q}%,referral_code.ilike.%${q}%`);
-  }
-  const planSlugs = SUBSCRIPTION_PLANS.map((p) => p.slug);
-  if (params.plan && isAllowedPlanSlug(params.plan, planSlugs)) {
-    query = query.eq("plan_slug", params.plan);
-  }
-  const [{ data, count, error }, staffIds] = await Promise.all([
-    query,
+  const [{ rows, count, error }, staffIds] = await Promise.all([
+    fetchHqMembersList({
+      page,
+      pageSize: PAGE_SIZE,
+      q: params.q ?? "",
+      plan: params.plan,
+      sort,
+    }),
     getStaffUserIds(),
   ]);
-  if (error) return <EmptyState title="Couldn't load members" text={error.message} />;
-  const rows = (data ?? []) as unknown as Row[];
-  if (!rows.length) return <EmptyState icon={Users} title="No members found" text={q ? "Try a different search." : undefined} />;
+  if (error) return <EmptyState title="Couldn't load members" text={error} />;
+  if (!rows.length) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="No members found"
+        text={params.q ? "Try a different search." : undefined}
+      />
+    );
+  }
 
   return (
     <>
@@ -138,10 +88,10 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
                 </td>
                 <td className={table.td}>{planBySlug(r.plan_slug)?.name ?? r.plan_slug}</td>
                 <td className={`${table.td} text-right tabular-nums`}>
-                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets?.withdrawal_balance)}
+                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets.withdrawal_balance)}
                 </td>
                 <td className={`${table.td} text-right tabular-nums text-slate-400`}>
-                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets?.deposit_balance)}
+                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets.deposit_balance)}
                 </td>
                 <td className={`${table.td} text-xs text-slate-400`} title={dateTime(r.created_at)}>
                   {t.relative(r.created_at)}
@@ -165,7 +115,7 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
               </span>
               <span className="text-right">
                 <span className="block text-sm font-semibold text-white tabular-nums">
-                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets?.withdrawal_balance)}
+                  {isStaffUserId(r.id, staffIds) ? "—" : php(r.wallets.withdrawal_balance)}
                 </span>
                 <span className="block text-[11px] text-slate-500">{planBySlug(r.plan_slug)?.name ?? r.plan_slug}</span>
               </span>
@@ -177,7 +127,7 @@ async function MembersTable({ searchParams }: { searchParams: Promise<Params> })
       <Pagination
         page={page}
         pageSize={PAGE_SIZE}
-        total={count ?? 0}
+        total={count}
         hrefFor={(p) => hrefWith({ ...params, sort }, p)}
         showWhenSinglePage
       />
