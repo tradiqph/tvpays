@@ -38,9 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            msg === "forfeited_limit"
-              ? "No forfeited catch-up ads left today"
-              : "Daily ad limit reached",
+            "You have already run out of task counts for today. Come back tomorrow to watch more videos.",
         },
         { status: 429 },
       );

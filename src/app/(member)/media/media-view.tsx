@@ -315,6 +315,7 @@ export function MediaView() {
                 );
               }}
               onNotice={setNotice}
+              onError={setError}
               likesRewardedToday={likesRewardedToday}
               likeCap={likeCap}
             />

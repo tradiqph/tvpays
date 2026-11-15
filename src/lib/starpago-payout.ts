@@ -1,6 +1,12 @@
 import {
+  GOTYME_ACCOUNT_RULE_MESSAGE,
+  normalizeGotymeAccount,
   normalizePhMobile,
   parseStarpagoMemberMethod,
+  parseWithdrawMethod,
+  STARPAGO_PAYOUT_PAY_METHOD_GOTYME,
+  withdrawMethodLabel,
+  type WithdrawMethod,
   starpagoAmountString,
   starpagoAppId,
   starpagoConfigured,
@@ -9,13 +15,15 @@ import {
   starpagoPost,
   starpagoGet,
   StarpagoRequestError,
-  type StarpagoMemberMethod,
 } from "@/lib/starpago";
 import { withdrawalPayoutMerOrderNo } from "@/lib/withdrawals";
 
 /** StarPago `extra.bankCode` for e-wallet payouts (not the same as `payMethod`). */
 export const STARPAGO_PAYOUT_BANK_CODE_GCASH = "GCASH";
 export const STARPAGO_PAYOUT_BANK_CODE_MAYA = "MAYA";
+/** Override via env if StarPago uses a different GoTyme bank code. */
+export const STARPAGO_PAYOUT_BANK_CODE_GOTYME =
+  process.env.STARPAGO_PAYOUT_BANK_CODE_GOTYME?.trim() || "GOTYME";
 
 export type StarpagoPayoutStatusAction =
   | "in_progress"
@@ -27,8 +35,9 @@ export type StarpagoEwalletPayoutDestination = {
   payMethod: string;
   bankCode: string;
   accountNo: string;
+  /** Empty for bank (GoTyme) payouts. */
   mobile: string;
-  method: StarpagoMemberMethod;
+  method: WithdrawMethod;
 };
 
 export function starpagoPayoutConfigured(): boolean {
@@ -49,7 +58,7 @@ const STARPAGO_PAYOUT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Matches dogogo / StarPago pay-in fallback emails (gcash.local / maya.local). */
 export function starpagoPayoutExtraEmail(opts: {
   mobile: string;
-  method: StarpagoMemberMethod;
+  method: WithdrawMethod;
   memberEmail?: string | null;
 }): string {
   const trimmed = opts.memberEmail?.trim();
@@ -57,7 +66,12 @@ export function starpagoPayoutExtraEmail(opts: {
     return trimmed;
   }
   const localPart = opts.mobile.replace(/\D/g, "") || "payout";
-  const domain = opts.method === "maya" ? "maya.local" : "gcash.local";
+  const domain =
+    opts.method === "maya"
+      ? "maya.local"
+      : opts.method === "gotyme"
+        ? "gotyme.local"
+        : "gcash.local";
   return `${localPart}@${domain}`;
 }
 
@@ -66,6 +80,23 @@ export function resolveStarpagoEwalletPayoutDestination(opts: {
   destinationType: string;
   destinationNumber: string;
 }): StarpagoEwalletPayoutDestination {
+  if (parseWithdrawMethod(opts.destinationType) === "gotyme") {
+    const accountNo = normalizeGotymeAccount(opts.destinationNumber.trim());
+    if (!accountNo) {
+      throw new StarpagoRequestError("Invalid GoTyme account number", {
+        apiCode: 400,
+        apiMsg: GOTYME_ACCOUNT_RULE_MESSAGE,
+      });
+    }
+    return {
+      payMethod: STARPAGO_PAYOUT_PAY_METHOD_GOTYME,
+      bankCode: STARPAGO_PAYOUT_BANK_CODE_GOTYME,
+      accountNo,
+      mobile: "",
+      method: "gotyme",
+    };
+  }
+
   const method = parseStarpagoMemberMethod(opts.destinationType);
   if (!method) {
     throw new StarpagoRequestError("Unsupported payout destination", {
@@ -132,7 +163,7 @@ export async function createStarpagoPayout(input: {
 
   const merOrderNo = withdrawalPayoutMerOrderNo(input.withdrawalId, input.attempt);
   const email = starpagoPayoutExtraEmail({
-    mobile: dest.mobile,
+    mobile: dest.mobile || dest.accountNo,
     method: dest.method,
     memberEmail: input.memberEmail,
   });
@@ -147,7 +178,7 @@ export async function createStarpagoPayout(input: {
     extra: {
       accountName: input.destinationName.trim(),
       email,
-      mobile: dest.mobile,
+      ...(dest.mobile ? { mobile: dest.mobile } : {}),
       bankCode: dest.bankCode,
       accountNo: dest.accountNo,
     },
@@ -199,6 +230,6 @@ export function isDefinitiveStarpagoCreateFailure(err: unknown): boolean {
   );
 }
 
-export function starpagoPayoutMethodLabel(method: StarpagoMemberMethod): string {
-  return method === "maya" ? "Maya" : "GCash";
+export function starpagoPayoutMethodLabel(method: WithdrawMethod): string {
+  return withdrawMethodLabel(method);
 }

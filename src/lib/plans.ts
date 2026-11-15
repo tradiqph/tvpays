@@ -192,6 +192,13 @@ export const REFERRAL_LEVELS = [
   { key: "L2" as const, rate: REFERRAL_RATES.b },
   { key: "L3" as const, rate: REFERRAL_RATES.c },
 ] as const;
+/** Team ad rewards: % of each ad reward a downline earns, paid to L1–L3 uplines. */
+export const AD_REFERRAL_RATES = { a: 0.1, b: 0.05, c: 0.03 } as const;
+export const AD_REFERRAL_LEVELS = [
+  { key: "L1" as const, rate: AD_REFERRAL_RATES.a },
+  { key: "L2" as const, rate: AD_REFERRAL_RATES.b },
+  { key: "L3" as const, rate: AD_REFERRAL_RATES.c },
+] as const;
 export function planBySlug(slug: string): SubscriptionPlan | undefined {
   return SUBSCRIPTION_PLANS.find((p) => p.slug === slug);
 }

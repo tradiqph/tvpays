@@ -75,6 +75,10 @@ export function ReferralsView() {
     data?.rates
       .map((r) => `${r.key} ${(r.rate * 100).toFixed(0)}%`)
       .join(" · ") ?? "L1 5% · L2 3% · L3 1%";
+  const adRateLine =
+    data?.adRates
+      .map((r) => `${r.key} ${(r.rate * 100).toFixed(0)}%`)
+      .join(" · ") ?? "L1 10% · L2 5% · L3 3%";
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -102,6 +106,18 @@ export function ReferralsView() {
                   buys a plan or adds video access days
                 </span>
                 . Deposit top-ups alone do not pay commission.
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-sky-100/75">
+                <span className="font-semibold text-amber-300">Ad rewards:</span>{" "}
+                earn {adRateLine} of what your team earns{" "}
+                <span className="font-semibold text-white">
+                  every time they watch an ad
+                </span>{" "}
+                while on an active paid plan (Free Trial members don&apos;t
+                count).
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-amber-200/90">
+                You need an active paid plan to receive any team commissions.
               </p>
               <div className="mt-3 flex gap-2">
                 <CopyButton label="Copy code" text={data.referralCode} />
@@ -197,7 +213,7 @@ export function ReferralsView() {
                     >
                       <div>
                         <p className="text-sm font-semibold text-white">
-                          Referral gift
+                          {row.kind === "ad" ? "Team ad reward" : "Referral gift"}
                           {row.level ? (
                             <span className="ml-1.5 text-sky-300/80">
                               ({row.level})

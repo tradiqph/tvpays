@@ -7,7 +7,10 @@ import {
   type PlanSlug,
 } from "@/lib/plans";
 import { walletApply } from "@/lib/wallet";
-import { distributeReferralRewards } from "@/lib/referrals";
+import {
+  distributeAdReferralRewards,
+  distributeReferralRewards,
+} from "@/lib/referrals";
 import {
   getEffectivePlanSlug,
   getActiveSubscriptionPlanSlug,
@@ -158,6 +161,13 @@ export async function creditAdView(
     date: today,
     forfeit_catch_up: kind === "forfeited",
   });
+
+  // Team ad rewards for L1–L3 uplines; never fail the viewer's own credit over it.
+  try {
+    await distributeAdReferralRewards(userId, reward, videoId, today);
+  } catch (e) {
+    console.error("[ad-view] team ad reward payout failed", userId, videoId, e);
+  }
 
   if (kind === "forfeited") {
     const deduct = Math.min(reward, forfeitedBalance);

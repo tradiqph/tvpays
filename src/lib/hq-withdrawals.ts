@@ -6,7 +6,7 @@ import {
   queryStarpagoPayout,
   starpagoPayoutConfigured,
 } from "@/lib/starpago-payout";
-import { parseStarpagoMemberMethod } from "@/lib/starpago";
+import { parseWithdrawMethod } from "@/lib/starpago";
 import { withdrawalPayoutMerOrderNo } from "@/lib/withdrawals";
 
 type WithdrawalRow = {
@@ -103,8 +103,8 @@ export async function dispatchWithdrawalPayout(withdrawalId: string) {
   if (row.status !== "pending") {
     throw new Error("Withdrawal is not pending");
   }
-  if (!parseStarpagoMemberMethod(row.destination_type)) {
-    throw new Error("Only GCash and Maya payouts are supported");
+  if (!parseWithdrawMethod(row.destination_type)) {
+    throw new Error("Only GCash, Maya, and GoTyme Bank payouts are supported");
   }
 
   const attempt = (row.payout_attempt ?? 0) + 1;

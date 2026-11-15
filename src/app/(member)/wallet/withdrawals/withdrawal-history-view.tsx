@@ -247,7 +247,11 @@ export function WithdrawalHistoryView() {
             <ul>
               {rows.map((row, i) => {
                 const dest =
-                  row.destination_type === "maya" ? "Maya" : "GCash";
+                  row.destination_type === "maya"
+                    ? "Maya"
+                    : row.destination_type === "gotyme"
+                      ? "GoTyme Bank"
+                      : "GCash";
                 return (
                   <li
                     key={row.id}

@@ -62,7 +62,9 @@ export function WalletActivityHub({
                       Latest ·{" "}
                       {lastWithdrawal.destination_type === "maya"
                         ? "Maya"
-                        : "GCash"}
+                        : lastWithdrawal.destination_type === "gotyme"
+                          ? "GoTyme Bank"
+                          : "GCash"}
                     </p>
                     <p className="font-mono text-sm font-bold tabular-nums text-white">
                       {formatPhp(lastWithdrawal.net_amount)}

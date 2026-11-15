@@ -77,7 +77,7 @@ const entryMeta: Record<
 > = {
   ad_reward: { label: "Ad Reward", icon: Play, orb: ORBS.green },
   drama_episode: { label: "Ad reward (legacy)", icon: Play, orb: ORBS.green },
-  referral_ad: { label: "Referral Bonus", icon: UserPlus, orb: ORBS.magenta },
+  referral_ad: { label: "Team Ad Reward", icon: UserPlus, orb: ORBS.magenta },
   referral_upgrade: {
     label: "Referral Gift",
     icon: UserPlus,
@@ -414,7 +414,8 @@ export function WalletView() {
             const Icon = meta.icon;
             const positive = row.amount >= 0;
             const refLevel =
-              row.entry_type === "referral_upgrade"
+              row.entry_type === "referral_upgrade" ||
+              row.entry_type === "referral_ad"
                 ? referralLevelLabel(row.metadata)
                 : null;
             const planName =

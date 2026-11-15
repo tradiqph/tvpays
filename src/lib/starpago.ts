@@ -23,6 +23,54 @@ export function parseStarpagoMemberMethod(
   return null;
 }
 
+/** Withdrawal destinations: e-wallets plus GoTyme Bank (bank account number, not a mobile). */
+export type WithdrawMethod = StarpagoMemberMethod | "gotyme";
+
+export function parseWithdrawMethod(input: unknown): WithdrawMethod | null {
+  const s = String(input ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "gcash" || s === "maya" || s === "gotyme") return s;
+  return null;
+}
+
+export function withdrawMethodLabel(method: string): string {
+  if (method === "maya") return "Maya";
+  if (method === "gotyme") return "GoTyme Bank";
+  return "GCash";
+}
+
+/** Payout payMethod for GoTyme (bank transfer). Override via env if StarPago assigns a different code. */
+export const STARPAGO_PAYOUT_PAY_METHOD_GOTYME =
+  process.env.STARPAGO_PAYOUT_PAY_METHOD_GOTYME?.trim() || "PH_DF_BANK";
+
+export const GOTYME_ACCOUNT_MIN_DIGITS = 10;
+export const GOTYME_ACCOUNT_MAX_DIGITS = 16;
+export const GOTYME_ACCOUNT_RULE_MESSAGE =
+  "GoTyme account number is not a mobile number — it must not start with 09";
+
+/**
+ * Digits only for a GoTyme account number. Refuses a leading "09" (a mobile
+ * number) by dropping the "9" so the user cannot continue typing that pattern.
+ */
+export function filterGotymeAccountDigits(input: string): string {
+  let digits = input.replace(/\D/g, "").slice(0, GOTYME_ACCOUNT_MAX_DIGITS);
+  if (digits.startsWith("09")) digits = "0";
+  return digits;
+}
+
+export function normalizeGotymeAccount(input: string): string | null {
+  const digits = input.replace(/\D/g, "");
+  if (digits.startsWith("09")) return null;
+  if (
+    digits.length < GOTYME_ACCOUNT_MIN_DIGITS ||
+    digits.length > GOTYME_ACCOUNT_MAX_DIGITS
+  ) {
+    return null;
+  }
+  return digits;
+}
+
 export function starpagoPayMethodFromMember(method: StarpagoMemberMethod): string {
   return method === "maya" ? STARPAGO_PAY_METHOD_MAYA : STARPAGO_PAY_METHOD_GCASH;
 }

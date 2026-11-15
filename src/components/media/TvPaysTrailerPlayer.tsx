@@ -20,6 +20,8 @@ type Props = {
   onSkip: () => void;
   /** After credit, allow pause/play without blocking the iframe. */
   controlsUnlocked: boolean;
+  /** No task counts left today — poster stays up and play is refused. */
+  outOfCounts?: boolean;
 };
 
 export function TvPaysTrailerPlayer({
@@ -34,6 +36,7 @@ export function TvPaysTrailerPlayer({
   countdown,
   onSkip,
   controlsUnlocked,
+  outOfCounts = false,
 }: Props) {
   const playerMountRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
@@ -100,13 +103,31 @@ export function TvPaysTrailerPlayer({
             type="button"
             onClick={onStartWatch}
             className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2"
-            aria-label="Start watching this trailer"
+            aria-label={
+              outOfCounts
+                ? "No task counts left today"
+                : "Start watching this trailer"
+            }
           >
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600/95 shadow-[0_0_24px_rgba(220,38,38,0.65)] ring-4 ring-white/30">
+            <span
+              className={`flex h-16 w-16 items-center justify-center rounded-full ring-4 ring-white/30 ${
+                outOfCounts
+                  ? "bg-slate-700/95"
+                  : "bg-red-600/95 shadow-[0_0_24px_rgba(220,38,38,0.65)]"
+              }`}
+            >
               <Play className="ml-1 h-8 w-8 fill-white text-white" />
             </span>
-            <span className="rounded-full bg-black/60 px-4 py-1.5 text-xs font-semibold text-white">
-              {credited ? "Tap to continue watching" : "Tap to watch · 10s to earn"}
+            <span
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold text-white ${
+                outOfCounts ? "bg-red-900/80" : "bg-black/60"
+              }`}
+            >
+              {outOfCounts
+                ? "No task counts left today"
+                : credited
+                  ? "Tap to continue watching"
+                  : "Tap to watch · 10s to earn"}
             </span>
           </button>
           {credited && (

@@ -9,9 +9,15 @@ import {
   saveWithdrawDestination,
 } from "@/lib/withdraw-destination";
 import {
+  filterGotymeAccountDigits,
   filterPayerNameLetters,
   filterPhMobileDigits,
+  GOTYME_ACCOUNT_MAX_DIGITS,
+  GOTYME_ACCOUNT_MIN_DIGITS,
+  GOTYME_ACCOUNT_RULE_MESSAGE,
+  normalizeGotymeAccount,
   normalizePhMobile,
+  parseWithdrawMethod,
   validateGcashPayerName,
 } from "@/lib/starpago";
 import { WITHDRAWAL_TAX_RATE } from "@/lib/plans";
@@ -40,25 +46,55 @@ export function WithdrawSheet({
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [saveDetails, setSaveDetails] = useState(false);
+  const [gotymeBlocked09, setGotymeBlocked09] = useState(false);
+  const isGotyme = destinationType === "gotyme";
 
   useEffect(() => {
     if (!open) return;
     const saved = getSavedWithdrawDestination();
     if (saved) {
       setDestinationType(saved.destinationType);
-      setDestinationNumber(filterPhMobileDigits(saved.destinationNumber));
+      setDestinationNumber(
+        saved.destinationType === "gotyme"
+          ? filterGotymeAccountDigits(saved.destinationNumber)
+          : filterPhMobileDigits(saved.destinationNumber),
+      );
       setDestinationName(filterPayerNameLetters(saved.destinationName));
       setSaveDetails(true);
     }
   }, [open]);
 
+  function changeDestinationType(next: string) {
+    const wasGotyme = destinationType === "gotyme";
+    setDestinationType(next);
+    setGotymeBlocked09(false);
+    // Account number and mobile number formats differ — don't carry one into the other.
+    if (wasGotyme !== (next === "gotyme")) setDestinationNumber("");
+  }
+
+  function changeDestinationNumber(raw: string) {
+    if (isGotyme) {
+      const digits = raw.replace(/\D/g, "");
+      setGotymeBlocked09(digits.startsWith("09"));
+      setDestinationNumber(filterGotymeAccountDigits(raw));
+    } else {
+      setDestinationNumber(filterPhMobileDigits(raw));
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const mobile = normalizePhMobile(destinationNumber);
+    const mobile = isGotyme
+      ? normalizeGotymeAccount(destinationNumber)
+      : normalizePhMobile(destinationNumber);
     if (!mobile) {
-      setError("Enter a valid mobile number: 11 digits starting with 09");
+      setError(
+        isGotyme
+          ? `Enter a valid GoTyme account number (${GOTYME_ACCOUNT_MIN_DIGITS}–${GOTYME_ACCOUNT_MAX_DIGITS} digits). ${GOTYME_ACCOUNT_RULE_MESSAGE}.`
+          : "Enter a valid mobile number: 11 digits starting with 09",
+      );
       return;
     }
     const nameErr = validateGcashPayerName(destinationName);
@@ -84,7 +120,7 @@ export function WithdrawSheet({
       setError(json.error ?? "Withdrawal failed");
       return;
     }
-    const destType = destinationType === "maya" ? "maya" : "gcash";
+    const destType = parseWithdrawMethod(destinationType) ?? "gcash";
     if (saveDetails) {
       saveWithdrawDestination({
         destinationType: destType,
@@ -130,25 +166,57 @@ export function WithdrawSheet({
         />
         <select
           value={destinationType}
-          onChange={(e) => setDestinationType(e.target.value)}
+          onChange={(e) => changeDestinationType(e.target.value)}
           className="mb-2 w-full rounded-xl border border-sky-800 bg-slate-950 px-3 py-2 text-white"
         >
           <option value="gcash">GCash</option>
           <option value="maya">Maya</option>
+          <option value="gotyme">GoTyme Bank</option>
         </select>
-        <input
-          required
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
-          maxLength={11}
-          pattern="09[0-9]{9}"
-          title="11-digit mobile number starting with 09"
-          placeholder="GCash / Maya mobile (09XXXXXXXXX)"
-          value={destinationNumber}
-          onChange={(e) => setDestinationNumber(filterPhMobileDigits(e.target.value))}
-          className="mb-2 w-full rounded-xl border border-sky-800 bg-slate-950 px-3 py-2 text-white"
-        />
+        {isGotyme ? (
+          <>
+            <input
+              key="gotyme-account"
+              required
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={GOTYME_ACCOUNT_MAX_DIGITS}
+              pattern={`(?!09)[0-9]{${GOTYME_ACCOUNT_MIN_DIGITS},${GOTYME_ACCOUNT_MAX_DIGITS}}`}
+              title={GOTYME_ACCOUNT_RULE_MESSAGE}
+              placeholder="GoTyme account number"
+              value={destinationNumber}
+              onChange={(e) => changeDestinationNumber(e.target.value)}
+              aria-describedby="gotyme-number-hint"
+              className={`mb-1 w-full rounded-xl border bg-slate-950 px-3 py-2 text-white ${
+                gotymeBlocked09 ? "border-red-500" : "border-sky-800"
+              }`}
+            />
+            <p
+              id="gotyme-number-hint"
+              className={`mb-2 text-xs ${gotymeBlocked09 ? "text-red-400" : "text-amber-300/90"}`}
+            >
+              {gotymeBlocked09
+                ? "That looks like a mobile number. GoTyme account numbers do not start with 09."
+                : "Use your GoTyme Bank account number — not your phone number. It does not start with 09."}
+            </p>
+          </>
+        ) : (
+          <input
+            key="ewallet-mobile"
+            required
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            maxLength={11}
+            pattern="09[0-9]{9}"
+            title="11-digit mobile number starting with 09"
+            placeholder="GCash / Maya mobile (09XXXXXXXXX)"
+            value={destinationNumber}
+            onChange={(e) => changeDestinationNumber(e.target.value)}
+            className="mb-2 w-full rounded-xl border border-sky-800 bg-slate-950 px-3 py-2 text-white"
+          />
+        )}
         <input
           required
           autoComplete="name"

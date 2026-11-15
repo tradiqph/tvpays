@@ -28,6 +28,7 @@ const ENTRY_TYPES = [
   "ad_reward",
   "drama_episode",
   "referral_upgrade",
+  "referral_ad",
   "agent_sale",
   "hq_credit_deposit",
   "hq_credit_withdrawal",

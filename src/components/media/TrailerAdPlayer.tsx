@@ -12,6 +12,9 @@ import {
   TvPaysTrailerPlayer,
 } from "@/components/media/TvPaysTrailerPlayer";
 
+export const OUT_OF_TASK_COUNTS_MESSAGE =
+  "You have already run out of task counts for today. Come back tomorrow to watch more videos.";
+
 type Props = {
   video: VideoListItem;
   planName: string;
@@ -34,6 +37,8 @@ type Props = {
     kind?: string;
   }) => void;
   onNotice: (msg: string) => void;
+  /** Shown as an error banner (e.g. no task counts left). */
+  onError: (msg: string) => void;
   likesRewardedToday: number;
   likeCap: number;
 };
@@ -50,6 +55,7 @@ export function TrailerAdPlayer({
   forfeitedBalance,
   onCredited,
   onNotice,
+  onError,
   likesRewardedToday,
   likeCap,
 }: Props) {
@@ -124,7 +130,11 @@ export function TrailerAdPlayer({
         kind?: string;
       };
       if (!res.ok) {
-        onNotice(json.error ?? "Could not credit this ad.");
+        if (res.status === 429) {
+          onError(json.error ?? OUT_OF_TASK_COUNTS_MESSAGE);
+        } else {
+          onNotice(json.error ?? "Could not credit this ad.");
+        }
         return;
       }
       creditedRef.current = true;
@@ -156,6 +166,7 @@ export function TrailerAdPlayer({
     onCredited,
     celebrateEarned,
     onNotice,
+    onError,
     video.id,
   ]);
 
@@ -165,7 +176,13 @@ export function TrailerAdPlayer({
     }
   }, [countdown, claimReward, credited, crediting, watchStarted]);
 
+  const outOfCounts = !credited && adsToday >= adsLimit;
+
   function startWatch() {
+    if (outOfCounts) {
+      onError(OUT_OF_TASK_COUNTS_MESSAGE);
+      return;
+    }
     setWatchStarted(true);
     if (credited || creditedRef.current) {
       setControlsUnlocked(true);
@@ -200,6 +217,7 @@ export function TrailerAdPlayer({
         countdown={countdown}
         onSkip={() => void claimReward()}
         controlsUnlocked={controlsUnlocked}
+        outOfCounts={outOfCounts}
       />
 
       <div className="space-y-2 p-3">

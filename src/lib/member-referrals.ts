@@ -1,7 +1,8 @@
 import { appOrigin, createAdminClient } from "@/lib/supabase/admin";
-import { REFERRAL_LEVELS } from "@/lib/plans";
+import { AD_REFERRAL_LEVELS, REFERRAL_LEVELS } from "@/lib/plans";
 
 const L1_LIST_LIMIT = 50;
+const REFERRAL_ENTRY_TYPES = ["referral_upgrade", "referral_ad"];
 const RECENT_COMMISSIONS_LIMIT = 20;
 
 export type ReferralTeamMember = {
@@ -17,12 +18,15 @@ export type ReferralCommissionRow = {
   level: string | null;
   createdAt: string;
   referenceId: string | null;
+  /** "upgrade" = plan purchase commission; "ad" = team ad reward. */
+  kind: "upgrade" | "ad";
 };
 
 export type MemberReferralsPayload = {
   referralCode: string;
   inviteUrl: string;
   rates: typeof REFERRAL_LEVELS;
+  adRates: typeof AD_REFERRAL_LEVELS;
   teamCounts: { l1: number; l2: number; l3: number };
   earningsByLevel: { L1: number; L2: number; L3: number };
   totalEarnings: number;
@@ -99,10 +103,10 @@ export async function getMemberReferrals(
 
   const { data: ledgerRows } = await admin
     .from("wallet_ledger")
-    .select("id, amount, metadata, created_at, reference_id")
+    .select("id, amount, metadata, created_at, reference_id, entry_type")
     .eq("user_id", userId)
     .eq("bucket", "withdrawal")
-    .eq("entry_type", "referral_upgrade")
+    .in("entry_type", REFERRAL_ENTRY_TYPES)
     .order("created_at", { ascending: false })
     .limit(RECENT_COMMISSIONS_LIMIT);
 
@@ -114,7 +118,7 @@ export async function getMemberReferrals(
     .select("amount, metadata")
     .eq("user_id", userId)
     .eq("bucket", "withdrawal")
-    .eq("entry_type", "referral_upgrade");
+    .in("entry_type", REFERRAL_ENTRY_TYPES);
 
   for (const row of allCommissionRows ?? []) {
     const amt = Number(row.amount);
@@ -138,6 +142,7 @@ export async function getMemberReferrals(
       level: levelFromMetadata(row.metadata),
       createdAt: row.created_at,
       referenceId: row.reference_id,
+      kind: row.entry_type === "referral_ad" ? "ad" : "upgrade",
     }),
   );
 
@@ -145,6 +150,7 @@ export async function getMemberReferrals(
     referralCode,
     inviteUrl,
     rates: REFERRAL_LEVELS,
+    adRates: AD_REFERRAL_LEVELS,
     teamCounts: { l1: l1Count, l2: l2Count, l3: l3Count },
     earningsByLevel,
     totalEarnings,

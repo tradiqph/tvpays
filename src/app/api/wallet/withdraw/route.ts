@@ -10,8 +10,12 @@ import {
 import { walletApply, getWallet } from "@/lib/wallet";
 import { emailWithdrawalAdminNotify } from "@/lib/email";
 import {
+  GOTYME_ACCOUNT_MAX_DIGITS,
+  GOTYME_ACCOUNT_MIN_DIGITS,
+  GOTYME_ACCOUNT_RULE_MESSAGE,
+  normalizeGotymeAccount,
   normalizePhMobile,
-  parseStarpagoMemberMethod,
+  parseWithdrawMethod,
   validateGcashPayerName,
 } from "@/lib/starpago";
 import {
@@ -63,10 +67,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const destType = String(body.destination_type ?? "gcash").toLowerCase();
-  if (!parseStarpagoMemberMethod(destType)) {
+  const destType = parseWithdrawMethod(body.destination_type ?? "gcash");
+  if (!destType) {
     return NextResponse.json(
-      { error: "Withdrawals are available to GCash and Maya only" },
+      { error: "Withdrawals are available to GCash, Maya, and GoTyme Bank only" },
       { status: 400 },
     );
   }
@@ -78,10 +82,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: nameErr }, { status: 400 });
   }
 
-  const destNumber = normalizePhMobile(destNumberRaw);
+  const destNumber =
+    destType === "gotyme"
+      ? normalizeGotymeAccount(destNumberRaw)
+      : normalizePhMobile(destNumberRaw);
   if (!destNumber) {
     return NextResponse.json(
-      { error: "Enter a valid Philippine mobile number (09XXXXXXXXX)" },
+      {
+        error:
+          destType === "gotyme"
+            ? `Enter a valid GoTyme account number (${GOTYME_ACCOUNT_MIN_DIGITS}–${GOTYME_ACCOUNT_MAX_DIGITS} digits). ${GOTYME_ACCOUNT_RULE_MESSAGE}.`
+            : "Enter a valid Philippine mobile number (09XXXXXXXXX)",
+      },
       { status: 400 },
     );
   }

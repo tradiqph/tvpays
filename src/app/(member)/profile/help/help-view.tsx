@@ -42,7 +42,11 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "How do referrals work?",
-    a: "Every member gets a referral code on Profile. Share your link — when someone signs up with your code and buys a plan, you earn L1–L3 commissions on their upgrades.",
+    a: "Every member gets a referral code on Profile. Share your link — when someone signs up with your code and buys a plan, you earn L1–L3 commissions on their upgrades (you need an active paid plan to receive commissions).",
+  },
+  {
+    q: "Do I earn when my team watches ads?",
+    a: "Yes — when someone in your network has an active paid plan, every ad view they're credited for earns you a share of their ad reward: L1 (direct) 10%, L2 5%, L3 3%. Free Trial members don't generate team ad rewards, and you must have an active paid plan yourself to receive any team earnings. It credits to your withdrawal wallet as Team Ad Reward.",
   },
   {
     q: "I forgot my password.",

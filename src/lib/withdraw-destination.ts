@@ -2,7 +2,7 @@
 
 /** Saved payout details on this device only (localStorage). */
 export type SavedWithdrawDestination = {
-  destinationType: "gcash" | "maya";
+  destinationType: "gcash" | "maya" | "gotyme";
   destinationNumber: string;
   destinationName: string;
 };
@@ -13,7 +13,9 @@ function isSaved(value: unknown): value is SavedWithdrawDestination {
   if (!value || typeof value !== "object") return false;
   const v = value as SavedWithdrawDestination;
   return (
-    (v.destinationType === "gcash" || v.destinationType === "maya") &&
+    (v.destinationType === "gcash" ||
+      v.destinationType === "maya" ||
+      v.destinationType === "gotyme") &&
     typeof v.destinationNumber === "string" &&
     typeof v.destinationName === "string"
   );

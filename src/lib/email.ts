@@ -62,7 +62,11 @@ export async function emailWithdrawalAdminNotify(
   input: WithdrawalAdminNotifyInput,
 ): Promise<void> {
   const destLabel =
-    input.destinationType === "maya" ? "Maya" : "GCash";
+    input.destinationType === "maya"
+      ? "Maya"
+      : input.destinationType === "gotyme"
+        ? "GoTyme Bank"
+        : "GCash";
   const member = input.memberEmail?.trim() || "(no email on account)";
 
   await sendWithdrawalNotifyEmail({
