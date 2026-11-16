@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   UserCircle,
   Users,
+  Wallet,
   X,
   Activity,
   type LucideIcon,
@@ -104,6 +105,7 @@ export function HqShell({
       items: [
         { href: "/hq/withdrawals", label: "Withdrawals", icon: Banknote, badge: pendingWithdrawals },
         { href: "/hq/deposits", label: "Deposits", icon: ArrowDownToLine },
+        { href: "/hq/wallet", label: "Wallet", icon: Wallet },
       ],
     },
     {

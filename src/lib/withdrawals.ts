@@ -16,6 +16,23 @@ export function applyWithdrawalListVisibility<
   return query.eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE);
 }
 
+/** Hide Oxford account rows on HQ Completed (and All) withdrawal lists. */
+export function applyHqWithdrawalsHideOxfordCompleted<
+  Q extends {
+    neq: (column: string, value: string) => Q;
+    or: (filters: string) => Q;
+  },
+>(query: Q, oxfordUserId: string | null, status: string): Q {
+  if (!oxfordUserId) return query;
+  if (status === "completed") {
+    return query.neq("user_id", oxfordUserId);
+  }
+  if (status === "all") {
+    return query.or(`status.neq.completed,user_id.neq.${oxfordUserId}`);
+  }
+  return query;
+}
+
 export function computeWithdrawalTaxAndNet(
   gross: number,
   options?: { taxExempt?: boolean },

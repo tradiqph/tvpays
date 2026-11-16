@@ -426,6 +426,38 @@ export async function createPayinOrder(input: {
   };
 }
 
+type StarpagoMerchantBalanceData = {
+  currency?: string;
+  payinValue?: number;
+  payoutValue?: number;
+  disableValue?: number;
+};
+
+export type StarpagoMerchantBalance = {
+  currency: string;
+  payinValue: number;
+  payoutValue: number;
+  disableValue: number;
+};
+
+/** Live merchant balances from StarPago (`GET /api/v2/merchant/balance`). */
+export async function queryStarpagoMerchantBalance(): Promise<StarpagoMerchantBalance> {
+  if (!starpagoConfigured()) {
+    throw new StarpagoRequestError("StarPago is not configured", { apiCode: 400 });
+  }
+  // PH balance: sign with appId only (currency in query breaks signature on ph.api.starpago.com).
+  const data = await starpagoGet<StarpagoMerchantBalanceData>(
+    "/api/v2/merchant/balance",
+    {},
+  );
+  return {
+    currency: data.currency?.trim() || "PHP",
+    payinValue: Number(data.payinValue ?? 0),
+    payoutValue: Number(data.payoutValue ?? 0),
+    disableValue: Number(data.disableValue ?? 0),
+  };
+}
+
 export function clientIpFromRequest(request: Request): string | null {
   const xff = request.headers.get("x-forwarded-for");
   if (xff) {

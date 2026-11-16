@@ -6,7 +6,12 @@ import { WithdrawalActions } from "@/components/hq/actions";
 import { SearchBox } from "@/components/hq/controls";
 import { dateTime, php, safeSearch } from "@/lib/hq/format";
 import { getHqTimeContext } from "@/lib/hq/now";
-import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
+import {
+  applyHqWithdrawalsHideOxfordCompleted,
+  applyWithdrawalListVisibility,
+  WITHDRAWAL_LIST_VISIBLE,
+} from "@/lib/withdrawals";
+import { getOxfordUserId } from "@/lib/oxford-account";
 
 const PAGE_SIZE = 25;
 const STATUSES = ["pending", "processing", "frozen", "completed", "failed", "rejected"] as const;
@@ -46,14 +51,19 @@ async function StatusTabs({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
   const active = statusOf(params);
   const admin = createAdminClient();
+  const oxfordUserId = await getOxfordUserId(admin);
   const counts = await Promise.all(
-    STATUSES.map((s) =>
-      admin
+    STATUSES.map((s) => {
+      let q = admin
         .from("withdrawals")
         .select("id", { count: "exact", head: true })
-        .eq("status", s)
-        .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE),
-    ),
+        .eq("status", s);
+      q = applyWithdrawalListVisibility(q);
+      if (s === "completed") {
+        q = applyHqWithdrawalsHideOxfordCompleted(q, oxfordUserId, "completed");
+      }
+      return q;
+    }),
   );
   return (
     <Tabs
@@ -82,16 +92,20 @@ async function WithdrawalsTable({ searchParams }: { searchParams: Promise<Params
   const page = Math.max(1, Number(params.page) || 1);
   const q = safeSearch(params.q);
 
-  let query = createAdminClient()
+  const admin = createAdminClient();
+  const oxfordUserId = await getOxfordUserId(admin);
+
+  let query = admin
     .from("withdrawals")
     .select(
       "id, user_id, status, gross_amount, tax_amount, net_amount, destination_type, destination_number, destination_name, requested_at, completed_at, failure_reason, paymongo_transfer_id, starpago_order_no, starpago_order_status, refund_status, profiles(member_code, display_name, avatar_url)",
       { count: "exact" },
     )
     // Oldest first while reviewing so nobody waits longest; newest first elsewhere.
-    .order("requested_at", { ascending: status === "pending" })
-    .eq("hidden_from_history", WITHDRAWAL_LIST_VISIBLE)
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    .order("requested_at", { ascending: status === "pending" });
+  query = applyWithdrawalListVisibility(query);
+  query = applyHqWithdrawalsHideOxfordCompleted(query, oxfordUserId, status);
+  query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (status !== "all") query = query.eq("status", status);
   if (q) query = query.or(`destination_number.ilike.%${q}%,destination_name.ilike.%${q}%`);
 
