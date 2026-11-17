@@ -1,7 +1,31 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
+import { manilaDayRequestBounds } from "@/lib/manila-date";
 import { WITHDRAWAL_TAX_RATE } from "@/lib/plans";
 
 /** Gross amount (before tax) — auto-send payout without HQ approval. */
 export const AUTO_PAYOUT_MAX_GROSS_PHP = 300;
+
+/** Max withdrawal requests per member per Manila calendar day. */
+export const MAX_MEMBER_WITHDRAWALS_PER_DAY = 3;
+
+export const WITHDRAWAL_DAILY_LIMIT_MESSAGE = `You can only request ${MAX_MEMBER_WITHDRAWALS_PER_DAY} withdrawals per day (Manila time). Try again tomorrow.`;
+
+export async function countMemberWithdrawalsToday(
+  admin: SupabaseClient<Database>,
+  userId: string,
+  now = new Date(),
+): Promise<number> {
+  const { startIso, endExclusiveIso } = manilaDayRequestBounds(now);
+  const { count, error } = await admin
+    .from("withdrawals")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("requested_at", startIso)
+    .lt("requested_at", endExclusiveIso);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
 
 export function isSuperAdminRole(role: unknown): boolean {
   return role === "super_admin";

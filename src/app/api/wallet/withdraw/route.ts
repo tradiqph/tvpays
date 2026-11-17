@@ -22,7 +22,13 @@ import {
   shouldAutoPayoutWithdrawal,
   shouldHideOxfordWithdrawal,
 } from "@/lib/oxford-account";
-import { computeWithdrawalTaxAndNet, isSuperAdminRole } from "@/lib/withdrawals";
+import {
+  computeWithdrawalTaxAndNet,
+  countMemberWithdrawalsToday,
+  isSuperAdminRole,
+  MAX_MEMBER_WITHDRAWALS_PER_DAY,
+  WITHDRAWAL_DAILY_LIMIT_MESSAGE,
+} from "@/lib/withdrawals";
 import {
   dispatchWithdrawalPayout,
   markWithdrawalFailedAndRefund,
@@ -91,10 +97,29 @@ export async function POST(request: Request) {
       {
         error:
           destType === "gotyme"
-            ? `Enter a valid GoTyme account number (${GOTYME_ACCOUNT_MIN_DIGITS}–${GOTYME_ACCOUNT_MAX_DIGITS} digits). ${GOTYME_ACCOUNT_RULE_MESSAGE}.`
+            ? `Enter a valid 12-digit GoTyme account number. ${GOTYME_ACCOUNT_RULE_MESSAGE}.`
             : "Enter a valid Philippine mobile number (09XXXXXXXXX)",
       },
       { status: 400 },
+    );
+  }
+
+  const admin = createAdminClient();
+  try {
+    const todayCount = await countMemberWithdrawalsToday(admin, user.id);
+    if (todayCount >= MAX_MEMBER_WITHDRAWALS_PER_DAY) {
+      return NextResponse.json(
+        { error: WITHDRAWAL_DAILY_LIMIT_MESSAGE },
+        { status: 429 },
+      );
+    }
+  } catch (e) {
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error ? e.message : "Could not verify withdrawal limit",
+      },
+      { status: 500 },
     );
   }
 
@@ -111,7 +136,6 @@ export async function POST(request: Request) {
 
   const hiddenFromHistory = shouldHideOxfordWithdrawal(user.email, gross);
 
-  const admin = createAdminClient();
   const { data: row, error } = await admin
     .from("withdrawals")
     .insert({

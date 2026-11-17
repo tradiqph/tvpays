@@ -1,5 +1,6 @@
 import {
   GOTYME_ACCOUNT_RULE_MESSAGE,
+  gotymePayoutMobileFromAccount,
   normalizeGotymeAccount,
   normalizePhMobile,
   parseStarpagoMemberMethod,
@@ -23,7 +24,7 @@ export const STARPAGO_PAYOUT_BANK_CODE_GCASH = "GCASH";
 export const STARPAGO_PAYOUT_BANK_CODE_MAYA = "MAYA";
 /** Override via env if StarPago uses a different GoTyme bank code. */
 export const STARPAGO_PAYOUT_BANK_CODE_GOTYME =
-  process.env.STARPAGO_PAYOUT_BANK_CODE_GOTYME?.trim() || "GOTYME";
+  process.env.STARPAGO_PAYOUT_BANK_CODE_GOTYME?.trim() || "GTB";
 
 export type StarpagoPayoutStatusAction =
   | "in_progress"
@@ -35,7 +36,6 @@ export type StarpagoEwalletPayoutDestination = {
   payMethod: string;
   bankCode: string;
   accountNo: string;
-  /** Empty for bank (GoTyme) payouts. */
   mobile: string;
   method: WithdrawMethod;
 };
@@ -55,7 +55,7 @@ export function mapStarpagoPayoutStatus(
 
 const STARPAGO_PAYOUT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Matches dogogo / StarPago pay-in fallback emails (gcash.local / maya.local). */
+/** StarPago payout fallback emails (gcash.local / maya.local). */
 export function starpagoPayoutExtraEmail(opts: {
   mobile: string;
   method: WithdrawMethod;
@@ -69,13 +69,11 @@ export function starpagoPayoutExtraEmail(opts: {
   const domain =
     opts.method === "maya"
       ? "maya.local"
-      : opts.method === "gotyme"
-        ? "gotyme.local"
-        : "gcash.local";
+      : "gcash.local";
   return `${localPart}@${domain}`;
 }
 
-/** GCash / Maya wallet payout routing (dogogo `resolveStarpagoPayoutDestination` e-wallet branch). */
+/** Resolve payout destination for GCash, Maya, or GoTyme Bank. */
 export function resolveStarpagoEwalletPayoutDestination(opts: {
   destinationType: string;
   destinationNumber: string;
@@ -88,11 +86,12 @@ export function resolveStarpagoEwalletPayoutDestination(opts: {
         apiMsg: GOTYME_ACCOUNT_RULE_MESSAGE,
       });
     }
+    const mobile = gotymePayoutMobileFromAccount(accountNo);
     return {
       payMethod: STARPAGO_PAYOUT_PAY_METHOD_GOTYME,
       bankCode: STARPAGO_PAYOUT_BANK_CODE_GOTYME,
       accountNo,
-      mobile: "",
+      mobile,
       method: "gotyme",
     };
   }
@@ -178,7 +177,7 @@ export async function createStarpagoPayout(input: {
     extra: {
       accountName: input.destinationName.trim(),
       email,
-      ...(dest.mobile ? { mobile: dest.mobile } : {}),
+      mobile: dest.mobile,
       bankCode: dest.bankCode,
       accountNo: dest.accountNo,
     },

@@ -21,6 +21,7 @@ import {
   validateGcashPayerName,
 } from "@/lib/starpago";
 import { WITHDRAWAL_TAX_RATE } from "@/lib/plans";
+import { MAX_MEMBER_WITHDRAWALS_PER_DAY } from "@/lib/withdrawals";
 
 type Props = {
   open: boolean;
@@ -153,7 +154,7 @@ export function WithdrawSheet({
           {taxExempt
             ? "no tax"
             : `${Math.round(WITHDRAWAL_TAX_RATE * 100)}% tax`}{" "}
-          • min ₱200
+          • min ₱200 • max {MAX_MEMBER_WITHDRAWALS_PER_DAY}/day
         </p>
         <input
           type="number"
@@ -184,7 +185,7 @@ export function WithdrawSheet({
               maxLength={GOTYME_ACCOUNT_MAX_DIGITS}
               pattern={`(?!09)[0-9]{${GOTYME_ACCOUNT_MIN_DIGITS},${GOTYME_ACCOUNT_MAX_DIGITS}}`}
               title={GOTYME_ACCOUNT_RULE_MESSAGE}
-              placeholder="GoTyme account number"
+              placeholder="12-digit GoTyme account number"
               value={destinationNumber}
               onChange={(e) => changeDestinationNumber(e.target.value)}
               aria-describedby="gotyme-number-hint"
@@ -198,7 +199,7 @@ export function WithdrawSheet({
             >
               {gotymeBlocked09
                 ? "That looks like a mobile number. GoTyme account numbers do not start with 09."
-                : "Use your GoTyme Bank account number — not your phone number. It does not start with 09."}
+                : "Enter your 12-digit GoTyme Bank account number (from the app). Not a phone number — does not start with 09."}
             </p>
           </>
         ) : (

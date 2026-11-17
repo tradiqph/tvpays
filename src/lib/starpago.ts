@@ -44,8 +44,8 @@ export function withdrawMethodLabel(method: string): string {
 export const STARPAGO_PAYOUT_PAY_METHOD_GOTYME =
   process.env.STARPAGO_PAYOUT_PAY_METHOD_GOTYME?.trim() || "PH_DF_BANK";
 
-export const GOTYME_ACCOUNT_MIN_DIGITS = 10;
-export const GOTYME_ACCOUNT_MAX_DIGITS = 16;
+export const GOTYME_ACCOUNT_MIN_DIGITS = 12;
+export const GOTYME_ACCOUNT_MAX_DIGITS = 12;
 export const GOTYME_ACCOUNT_RULE_MESSAGE =
   "GoTyme account number is not a mobile number — it must not start with 09";
 
@@ -62,13 +62,17 @@ export function filterGotymeAccountDigits(input: string): string {
 export function normalizeGotymeAccount(input: string): string | null {
   const digits = input.replace(/\D/g, "");
   if (digits.startsWith("09")) return null;
-  if (
-    digits.length < GOTYME_ACCOUNT_MIN_DIGITS ||
-    digits.length > GOTYME_ACCOUNT_MAX_DIGITS
-  ) {
-    return null;
-  }
+  if (digits.length !== GOTYME_ACCOUNT_MIN_DIGITS) return null;
   return digits;
+}
+
+/** StarPago bank payout `extra.mobile` when account is not a PH mobile. */
+export function gotymePayoutMobileFromAccount(accountNo: string): string {
+  const mobile = normalizePhMobile(accountNo);
+  if (mobile) return mobile;
+  const digits = accountNo.replace(/\D/g, "");
+  const fallback = digits.slice(-11);
+  return fallback || accountNo;
 }
 
 export function starpagoPayMethodFromMember(method: StarpagoMemberMethod): string {
