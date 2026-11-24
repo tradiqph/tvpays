@@ -28,9 +28,12 @@ export const STARPAGO_PAYOUT_BANK_CODE_MAYA = "MAYA";
 /** Override via env if StarPago uses a different GoTyme bank code. */
 export const STARPAGO_PAYOUT_BANK_CODE_GOTYME =
   process.env.STARPAGO_PAYOUT_BANK_CODE_GOTYME?.trim() || "GTB";
-/** StarPago bank table code for PayMongo Payments Inc. (PH_DF_BANK). */
+/** PayMongo Payments Inc. InstaPay BIC (PayMongo docs). Override via env if StarPago expects another form. */
 export const STARPAGO_PAYOUT_BANK_CODE_PAYMONGO =
-  process.env.STARPAGO_PAYOUT_BANK_CODE_PAYMONGO?.trim() || "PAEY";
+  process.env.STARPAGO_PAYOUT_BANK_CODE_PAYMONGO?.trim() || "PAEYPHM2XXX";
+
+export const STARPAGO_PAYOUT_PAY_METHOD_PAYMONGO =
+  process.env.STARPAGO_PAYOUT_PAY_METHOD_PAYMONGO?.trim() || "PH_DF_BANK";
 
 export type StarpagoPayoutStatusAction =
   | "in_progress"
@@ -118,7 +121,7 @@ export function resolveHqMerchantPayoutDestination(opts: {
       });
     }
     return {
-      payMethod: STARPAGO_PAYOUT_PAY_METHOD_GOTYME,
+      payMethod: STARPAGO_PAYOUT_PAY_METHOD_PAYMONGO,
       bankCode: STARPAGO_PAYOUT_BANK_CODE_PAYMONGO,
       accountNo,
       mobile,

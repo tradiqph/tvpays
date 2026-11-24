@@ -28,6 +28,8 @@ NEXT_PUBLIC_APP_URL=https://tvpays.net
 
 Restart `npm run dev`. Callbacks go to production; use **Sync statuses** on `/hq/wallet` to refresh merchant payout rows while developing.
 
+PayMongo HQ withdraw defaults to `extra.bankCode=PAEYPHM2XXX` and `payMethod=PH_DF_BANK`. Override with `STARPAGO_PAYOUT_BANK_CODE_PAYMONGO` / `STARPAGO_PAYOUT_PAY_METHOD_PAYMONGO` if StarPago support gives different values.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

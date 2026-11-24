@@ -63,7 +63,7 @@ export function HqWalletWithdrawForm({
         }
       }}
     >
-      <MethodSelect method={method} setMethod={setMethod} />
+      <MethodSelect method={method} setMethod={setMethod} methods={METHODS} />
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className="mb-1 block text-xs text-slate-400">Amount (PHP)</span>
@@ -135,9 +135,11 @@ export function HqWalletWithdrawForm({
 function MethodSelect({
   method,
   setMethod,
+  methods,
 }: {
   method: HqMerchantPayoutMethod;
   setMethod: (m: HqMerchantPayoutMethod) => void;
+  methods: { value: HqMerchantPayoutMethod; label: string }[];
 }) {
   return (
     <label className="block">
@@ -147,7 +149,7 @@ function MethodSelect({
         onChange={(e) => setMethod(e.target.value as HqMerchantPayoutMethod)}
         className="h-10 w-full rounded-xl border border-white/10 bg-[#0a1630] px-3 text-base text-slate-200 md:text-sm"
       >
-        {METHODS.map((m) => (
+        {methods.map((m) => (
           <option key={m.value} value={m.value}>
             {m.label}
           </option>
