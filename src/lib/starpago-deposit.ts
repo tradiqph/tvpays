@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { createAdminClient, appOrigin } from "@/lib/supabase/admin";
-import { MAX_TOPUP_PHP, MIN_TOPUP_PHP } from "@/lib/plans";
+import { MAX_TOPUP_PHP, minTopupPhpForRole } from "@/lib/plans";
 import {
-  STARPAGO_MIN_AMOUNT_PHP,
   createPayinOrder,
   generateMerOrderNo,
   normalizePhMobile,
@@ -47,24 +46,17 @@ export async function createMemberStarpagoDeposit(
     );
   }
 
+  const minTopup = minTopupPhpForRole(user.app_metadata?.role);
   const amount = Number(body.amount);
-  if (!Number.isFinite(amount) || amount < MIN_TOPUP_PHP) {
+  if (!Number.isFinite(amount) || amount < minTopup) {
     return NextResponse.json(
-      { error: `Minimum top-up is ₱${MIN_TOPUP_PHP}` },
+      { error: `Minimum top-up is ₱${minTopup}` },
       { status: 400 },
     );
   }
   if (amount > MAX_TOPUP_PHP) {
     return NextResponse.json(
       { error: `Maximum top-up per request is ₱${MAX_TOPUP_PHP.toLocaleString("en-PH")}` },
-      { status: 400 },
-    );
-  }
-  if (amount < STARPAGO_MIN_AMOUNT_PHP) {
-    return NextResponse.json(
-      {
-        error: `Minimum ${starpagoEwalletLabel(method)} amount is ₱${STARPAGO_MIN_AMOUNT_PHP}`,
-      },
       { status: 400 },
     );
   }

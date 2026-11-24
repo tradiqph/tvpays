@@ -162,6 +162,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      hq_merchant_payouts: {
+        Row: {
+          amount_php: number;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string;
+          destination_mobile: string;
+          destination_name: string;
+          destination_number: string;
+          destination_type: string;
+          failure_reason: string | null;
+          id: string;
+          status: string;
+          starpago_mer_order_no: string | null;
+          starpago_order_no: string | null;
+          starpago_order_status: number | null;
+        };
+        Insert: {
+          amount_php: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          destination_mobile: string;
+          destination_name: string;
+          destination_number: string;
+          destination_type: string;
+          failure_reason?: string | null;
+          id?: string;
+          status?: string;
+          starpago_mer_order_no?: string | null;
+          starpago_order_no?: string | null;
+          starpago_order_status?: number | null;
+        };
+        Update: {
+          amount_php?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          destination_mobile?: string;
+          destination_name?: string;
+          destination_number?: string;
+          destination_type?: string;
+          failure_reason?: string | null;
+          id?: string;
+          status?: string;
+          starpago_mer_order_no?: string | null;
+          starpago_order_no?: string | null;
+          starpago_order_status?: number | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           ads_points: number;

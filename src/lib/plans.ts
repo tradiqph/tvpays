@@ -180,6 +180,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 export const MIN_TOPUP_PHP = 500;
+/** Super admins may top up at StarPago’s floor for testing. */
+export const MIN_TOPUP_PHP_SUPER_ADMIN = 100;
+
+export function minTopupPhpForRole(role: unknown): number {
+  return role === "super_admin" ? MIN_TOPUP_PHP_SUPER_ADMIN : MIN_TOPUP_PHP;
+}
 export const MIN_WITHDRAWAL_PHP = 200;
 /** Single request cap (balance check still applies). */
 export const MAX_WITHDRAWAL_PHP = 100_000;

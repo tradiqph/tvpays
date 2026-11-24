@@ -16,7 +16,9 @@ export type HqAction =
   | "member.assign_upline"
   | "member.set_password"
   | "team.grant"
-  | "team.revoke";
+  | "team.revoke"
+  | "merchant.payout"
+  | "merchant.payout.sync";
 
 /** Records an HQ action. Never throws: a logging failure must not undo the action. */
 export async function logHqAction(

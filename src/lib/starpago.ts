@@ -34,10 +34,47 @@ export function parseWithdrawMethod(input: unknown): WithdrawMethod | null {
   return null;
 }
 
+/** HQ merchant payout destinations (includes PayMongo wallet via StarPago bank code). */
+export type HqMerchantPayoutMethod = WithdrawMethod | "paymongo";
+
+export function parseHqMerchantPayoutMethod(
+  input: unknown,
+): HqMerchantPayoutMethod | null {
+  const s = String(input ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "gcash" || s === "maya" || s === "gotyme" || s === "paymongo") {
+    return s;
+  }
+  return null;
+}
+
+export function hqMerchantPayoutMethodLabel(method: string): string {
+  if (method === "maya") return "Maya";
+  if (method === "gotyme") return "GoTyme Bank";
+  if (method === "paymongo") return "PayMongo wallet";
+  return "GCash";
+}
+
 export function withdrawMethodLabel(method: string): string {
+  if (method === "paymongo") return "PayMongo wallet";
   if (method === "maya") return "Maya";
   if (method === "gotyme") return "GoTyme Bank";
   return "GCash";
+}
+
+export const PAYMONGO_WALLET_ACCOUNT_MIN_DIGITS = 10;
+export const PAYMONGO_WALLET_ACCOUNT_MAX_DIGITS = 32;
+
+export function normalizePaymongoWalletAccount(input: string): string | null {
+  const digits = input.replace(/\D/g, "");
+  if (
+    digits.length < PAYMONGO_WALLET_ACCOUNT_MIN_DIGITS ||
+    digits.length > PAYMONGO_WALLET_ACCOUNT_MAX_DIGITS
+  ) {
+    return null;
+  }
+  return digits;
 }
 
 /** Payout payMethod for GoTyme (bank transfer). Override via env if StarPago assigns a different code. */
@@ -297,17 +334,64 @@ export class StarpagoRequestError extends Error {
   }
 }
 
+/** StarPago `msg` / `error` for UI and logs; avoids generic "Payment gateway error". */
+export function starpagoUserFacingError(err: unknown): string {
+  if (err instanceof StarpagoRequestError) {
+    const api = err.apiMsg?.trim();
+    if (api) return api;
+    return err.message;
+  }
+  if (err instanceof Error) return err.message;
+  return "Something went wrong";
+}
+
+export function starpagoErrorDebugPayload(
+  err: unknown,
+): { apiCode?: number } | undefined {
+  if (process.env.NODE_ENV !== "development") return undefined;
+  if (err instanceof StarpagoRequestError && err.apiCode != null) {
+    return { apiCode: err.apiCode };
+  }
+  return undefined;
+}
+
+/** Payout notifyUrl must be public HTTPS (StarPago rejects localhost). */
+export function starpagoPayoutNotifyOriginOk(): boolean {
+  const origin = appOrigin();
+  return origin.startsWith("https://") && !/localhost|127\.0\.0\.1/i.test(origin);
+}
+
 async function parseStarpagoResponse<T>(path: string, res: Response): Promise<T> {
   const text = await res.text();
   let json: StarpagoApiEnvelope<T>;
   try {
     json = JSON.parse(text) as StarpagoApiEnvelope<T>;
   } catch {
+    const trimmed = text.trim();
+    const relayRejected =
+      trimmed === "invalid path" ||
+      (res.status === 400 && trimmed.length < 64 && /nginx/i.test(res.headers.get("server") ?? ""));
+  const relayMsg = relayRejected
+    ? "StarPago relay blocked this API path. Allow payout create/query on the relay (see relay/starpago/README.md)."
+    : undefined;
+    console.error("[starpago] non-json response", {
+      path,
+      status: res.status,
+      head: text.slice(0, 500),
+    });
     throw new StarpagoRequestError("Payment gateway unreachable", {
       httpStatus: res.status,
+      apiMsg: relayMsg,
     });
   }
   if (json.code !== 0 || !json.data) {
+    console.error("[starpago] api error", {
+      path,
+      status: res.status,
+      code: json.code,
+      msg: json.msg,
+      error: json.error,
+    });
     throw new StarpagoRequestError("Payment gateway error", {
       httpStatus: res.status,
       apiCode: json.code,

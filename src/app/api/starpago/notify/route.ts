@@ -9,6 +9,10 @@ import {
 } from "@/lib/starpago";
 import { creditStarpagoDeposit } from "@/lib/starpago-deposit";
 import { emailDepositPaid } from "@/lib/email";
+import {
+  applyStarpagoPayoutToHqMerchant,
+  isHqMerchantPayoutMerOrderNo,
+} from "@/lib/hq-merchant-payout";
 import { applyStarpagoPayoutToWithdrawal } from "@/lib/hq-withdrawals";
 import {
   mapStarpagoPayoutStatus,
@@ -39,6 +43,11 @@ export async function POST(request: Request) {
   const merOrderNo = String(body.merOrderNo ?? "");
   if (!merOrderNo) {
     return NextResponse.json({ error: "Missing merOrderNo" }, { status: 400 });
+  }
+
+  if (isHqMerchantPayoutMerOrderNo(merOrderNo)) {
+    await applyStarpagoPayoutToHqMerchant(merOrderNo);
+    return NextResponse.json({ ok: true });
   }
 
   if (isWithdrawalPayoutMerOrderNo(merOrderNo)) {

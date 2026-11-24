@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SlideSheet } from "@/components/member/SlideSheet";
 import { AlertDialog } from "@/components/member/AlertDialog";
 import { filterPayerNameLetters, filterPhMobileDigits } from "@/lib/starpago";
@@ -8,16 +8,25 @@ import { filterPayerNameLetters, filterPhMobileDigits } from "@/lib/starpago";
 type Props = {
   open: boolean;
   onClose: () => void;
+  minTopupPhp?: number;
 };
 
-export function TopupSheet({ open, onClose }: Props) {
-  const [amount, setAmount] = useState("500");
+export function TopupSheet({ open, onClose, minTopupPhp = 500 }: Props) {
+  const [amount, setAmount] = useState(String(minTopupPhp));
   const [method, setMethod] = useState<"gcash" | "maya">("gcash");
   const bucket = "deposit" as const;
   const [mobile, setMobile] = useState("");
   const [accountName, setAccountName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setAmount((prev) => {
+      const n = Number(prev);
+      if (!Number.isFinite(n) || n < minTopupPhp) return String(minTopupPhp);
+      return prev;
+    });
+  }, [minTopupPhp]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,10 +70,10 @@ export function TopupSheet({ open, onClose }: Props) {
         <p className="mb-3 text-xs text-slate-400">
           Funds are added to your <span className="text-sky-200">deposit balance</span>.
         </p>
-        <label className="text-xs text-slate-400">Amount (min ₱500)</label>
+        <label className="text-xs text-slate-400">Amount (min ₱{minTopupPhp})</label>
         <input
           type="number"
-          min={500}
+          min={minTopupPhp}
           required
           value={amount}
           onChange={(e) => setAmount(e.target.value)}

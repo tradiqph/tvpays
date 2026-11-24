@@ -16,6 +16,18 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### StarPago payouts on localhost
+
+StarPago payout create requires a **public HTTPS** `notifyUrl`. Local dev defaults to `http://localhost:3000`, which the gateway rejects.
+
+For HQ wallet withdraw (or member payout) tests from your machine, add to `.env.local`:
+
+```env
+NEXT_PUBLIC_APP_URL=https://tvpays.net
+```
+
+Restart `npm run dev`. Callbacks go to production; use **Sync statuses** on `/hq/wallet` to refresh merchant payout rows while developing.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

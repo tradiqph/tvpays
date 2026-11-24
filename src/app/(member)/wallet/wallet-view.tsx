@@ -24,6 +24,7 @@ import {
   applyHiddenWithdrawalLedgerExclusion,
   filterLedgerRowsForDisplay,
 } from "@/lib/wallet-ledger-visibility";
+import { minTopupPhpForRole, MIN_TOPUP_PHP } from "@/lib/plans";
 import { WITHDRAWAL_LIST_VISIBLE } from "@/lib/withdrawals";
 import { createClient } from "@/lib/supabase/client";
 import { useCountUp } from "@/hooks/useCountUp";
@@ -197,6 +198,7 @@ export function WalletView() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [canWithdraw, setCanWithdraw] = useState(false);
   const [withdrawTaxExempt, setWithdrawTaxExempt] = useState(false);
+  const [minTopupPhp, setMinTopupPhp] = useState(MIN_TOPUP_PHP);
   const [withdrawBlockedOpen, setWithdrawBlockedOpen] = useState(false);
   const [lastWithdrawal, setLastWithdrawal] = useState<WithdrawalRow | null>(
     null,
@@ -214,7 +216,9 @@ export function WalletView() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    setWithdrawTaxExempt(user.app_metadata?.role === "super_admin");
+    const superAdmin = user.app_metadata?.role === "super_admin";
+    setWithdrawTaxExempt(superAdmin);
+    setMinTopupPhp(minTopupPhpForRole(user.app_metadata?.role));
 
     await fetch("/api/wallet/withdrawals/sync", { method: "POST" }).catch(
       () => {},
@@ -521,7 +525,11 @@ export function WalletView() {
         </div>
       </div>
 
-      <TopupSheet open={topupOpen} onClose={() => setTopupOpen(false)} />
+      <TopupSheet
+        open={topupOpen}
+        onClose={() => setTopupOpen(false)}
+        minTopupPhp={minTopupPhp}
+      />
       <WithdrawSheet
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}

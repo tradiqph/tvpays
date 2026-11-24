@@ -23,6 +23,8 @@ const ACTIONS: HqAction[] = [
   "member.password_reset",
   "team.grant",
   "team.revoke",
+  "merchant.payout",
+  "merchant.payout.sync",
 ];
 
 type Params = { action?: string; page?: string };
